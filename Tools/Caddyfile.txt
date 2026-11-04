@@ -1,0 +1,29 @@
+# Course example: a typical AI-built control, made for the course (not a recording).
+#
+# CitrixBleed (CVE-2023-4966) interception layer for the training lab.
+# Blocks GET requests to the OIDC discovery endpoint whose Host header is
+# longer than 120 characters, before they reach the upstream.
+#
+# Defense in depth only: this does NOT replace upgrading NetScaler or
+# killing active sessions after the upgrade.
+
+:8443 {
+    bind 127.0.0.1
+    tls internal
+
+    log {
+        output file /var/log/caddy/citrixbleed-guard.log
+        format json
+    }
+
+    @suspect {
+        method GET HEAD
+        path /oauth/idp/.well-known/openid-configuration*
+        vars_regexp hostlength {http.request.host} ".{121,}"
+    }
+
+    route {
+        respond @suspect 403
+        reverse_proxy 127.0.0.1:9000
+    }
+}
