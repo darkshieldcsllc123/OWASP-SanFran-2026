@@ -1,0 +1,283 @@
+# Build: `ai-connector`, a drop-in AI provider menu item for any HTML/JS SPA
+
+## Role
+You are a senior front-end engineer who writes framework-agnostic, dependency-free browser code. Produce complete, working files. Do not use placeholders, "TODO: implement" comments, or pseudo-code.
+
+## Goal
+Build a self-contained component that any single-page app (vanilla JS, React, Vue, Angular, Svelte, etc.) can drop into its existing side navigation. It renders as ONE menu item (default label "AI Models"). Clicking it opens a settings panel where the user connects up to three providers:
+
+- **Claude** (Anthropic API)
+- **ChatGPT** (OpenAI API; this needs an OpenAI API key, not a ChatGPT consumer login)
+- **Gemini** (Google Gemini API, using a Google AI Studio key)
+
+The component also exposes ONE unified JavaScript API, so the rest of the app can send chat requests to any connected provider without knowing how the providers differ. A chat UI will be built on top of this API in a later step. Treat the public API below as a contract and implement it exactly.
+
+## Deliverables
+1. `ai-connector.js`: the whole component in one file. It must work as an ES module (`import AIConnector from './ai-connector.js'`) and as a plain `<script>` tag (which sets `window.AIConnector`). No dependencies, no build step, no TypeScript. Use JSDoc types.
+2. `demo.html`: a fake SPA with a typical left sidebar (logo, 4–5 nav items, a collapse toggle) and a hash router with three dummy pages. The connector menu item sits in the nav like a native item. One page has a "Test prompt" box that calls `AIConnector.stream()` and prints tokens as they arrive, so the whole pipeline can be checked by hand.
+3. `proxy-example.js`: a reference proxy that implements the Proxy-mode contract below, reads API keys from environment variables, and streams responses back. Write it either for Node 18+ (native `http` and `fetch`, no deps) or as a Cloudflare Worker, and state which one you chose.
+4. `tests.html`: opens in a browser and runs unit tests for the pure parts (request builders, SSE parser, stream normalizers, error mapping) against hard-coded fixture responses, with `fetch` mocked. It prints pass/fail on the page.
+5. `README.md`: installation, the integration methods, framework snippets (React, Vue, Angular, vanilla), config reference, API reference, events, theming variables, security notes, and CSP requirements.
+
+## Architecture (keep these layers separate inside the file)
+1. **Core (no DOM):** provider adapters, the unified client, the SSE parser, error normalization, and model listing and caching. It must be importable by `proxy-example.js` in Node. Guard all DOM and custom-element code behind `typeof window !== 'undefined'`.
+2. **Storage:** an adapter shaped `{ get(key), set(key, value), remove(key) }`.
+   - The default is `sessionStorage`. Use `localStorage` only when the user ticks "Remember on this device".
+   - Namespace every key `aic:v1:`.
+   - The host app can supply its own adapter.
+3. **UI:** custom elements in Shadow DOM: `<ai-connector-menu>` (the menu item) and the panel it opens.
+
+## Integration methods (support all three)
+- Declarative: `<script type="module" src="ai-connector.js"></script>` and `<ai-connector-menu></ai-connector-menu>` placed inside the host's nav.
+- Programmatic: `AIConnector.mount('#sidebar-nav', options)` returns `{ el, destroy() }`.
+- Headless: `AIConnector.configure({...})` with no UI at all. The host injects keys or uses proxy mode and calls the API directly.
+
+## Provider adapters (Direct mode)
+
+**Model IDs rule:** do NOT hardcode model IDs from your training data. They go stale within months and will be wrong by the time this ships.
+- Populate model dropdowns from each provider's list-models endpoint.
+- Cache the list for 24 hours per provider and offer a Refresh button.
+- Sort newest-first where the API provides a date.
+- Always offer a "Custom model ID…" free-text option.
+- Remember the user's choice per provider.
+
+### Anthropic (Claude)
+- Chat: `POST https://api.anthropic.com/v1/messages` with `stream: true`.
+- Headers: `x-api-key`, `anthropic-version: 2023-06-01`, `content-type: application/json`. In Direct mode, also send `anthropic-dangerous-direct-browser-access: true`; browser CORS requires it.
+- Body: `model`, `max_tokens` (required, taken from config defaults), `system` (a top-level string, not a message), `messages`, and `temperature` only when it is set.
+- Stream events:
+  - `message_start`: read input token usage.
+  - `content_block_delta` where `delta.type === "text_delta"`: emit `delta.text`. Ignore other delta types such as thinking or tool input.
+  - `message_delta`: read `stop_reason` and output token usage.
+  - `message_stop`: end of stream.
+  - `ping`: ignore.
+  - `error`: a mid-stream error. Map it.
+- Models: `GET https://api.anthropic.com/v1/models` with the same headers. Use this endpoint for both "Test connection" and the model list.
+
+### OpenAI (ChatGPT)
+- Default style is the Responses API: `POST https://api.openai.com/v1/responses` with `stream: true` and `Authorization: Bearer <key>`.
+- Body: `model`, `input` (an array of `{role, content}`), `instructions` (the system prompt), `max_output_tokens`, `temperature` only when set, and `store: false`.
+- Stream events:
+  - `response.output_text.delta`: emit `delta`.
+  - `response.completed`: read usage from `response.usage.input_tokens` and `response.usage.output_tokens`.
+  - `response.incomplete`: map to `max_tokens` or `other`.
+  - `response.failed` and `error`: map to errors.
+  - Ignore all other event types.
+- Also implement `apiStyle: "chat_completions"` so the adapter can target any OpenAI-compatible base URL:
+  - Endpoint: `POST {baseUrl}/v1/chat/completions`.
+  - Send the system prompt as the first message.
+  - Set `stream_options: { include_usage: true }`.
+  - Parse `choices[0].delta.content`.
+  - End on `data: [DONE]`.
+- Models: `GET /v1/models`. This returns every model type, so filter out non-chat models. Exclude ids containing embedding, tts, whisper, transcribe, dall-e, image, audio, realtime, moderation, and similar terms. The host can override this with `modelFilter`.
+
+### Google (Gemini)
+- Chat: `POST https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGenerateContent?alt=sse`.
+- Auth: send the key in the `x-goog-api-key` header. NEVER put the key in the URL query string, where it leaks into logs and history.
+- Body:
+  - `contents`: an array of `{ role: "user" | "model", parts: [{ text }] }`. Map `assistant` to `model`.
+  - `systemInstruction: { parts: [{ text }] }`.
+  - `generationConfig: { maxOutputTokens, temperature }`.
+- Stream: each `data:` line is a full response chunk.
+  - Emit the text of `candidates[0].content.parts[]`, skipping parts flagged `thought: true`.
+  - Read usage from `usageMetadata.promptTokenCount` and `usageMetadata.candidatesTokenCount`.
+  - A `finishReason` of SAFETY or RECITATION maps to stop reason `safety`.
+  - `promptFeedback.blockReason` means the prompt itself was blocked. Raise error code `blocked`.
+- Models: `GET https://generativelanguage.googleapis.com/v1beta/models`.
+  - It is paginated via `pageToken`; fetch all pages.
+  - Keep models whose `supportedGenerationMethods` includes `generateContent`.
+  - Strip the `models/` prefix for display and storage, and add it back when building URLs.
+
+### Shared SSE parser
+Write one parser over `fetch` response bodies (ReadableStream plus `TextDecoder` with `{ stream: true }`). It must handle:
+- LF and CRLF line endings (Gemini uses CRLF in browsers)
+- events split across chunk boundaries
+- multi-line `data:` fields
+- `event:` lines and comment or keep-alive lines
+- the `[DONE]` sentinel
+It must also stop reading immediately on abort.
+
+## Normalization rules
+- The conversation format is provider-neutral: `{ role: 'user' | 'assistant', content: string }`. Switching providers mid-conversation must just work.
+- Before sending:
+  - Drop empty messages.
+  - Merge consecutive messages that have the same role.
+  - Ensure the first message is from the user.
+  - Send optional params (temperature, etc.) only when they are set.
+- If a provider returns 400 saying a parameter is unsupported (some reasoning models reject temperature), retry once without the optional params and remember that for this model for the session. This is the ONLY automatic retry for chat requests.
+- Stop reasons map to one of: `end`, `max_tokens`, `safety`, `stopped` (the user aborted), or `other`.
+- Abort is not an error. Aborting resolves with the partial text and `stopReason: 'stopped'`.
+
+## Unified public API (contract)
+```js
+AIConnector.configure({
+  mode: 'direct' | 'proxy',            // default 'direct'
+  proxyUrl: '/api/ai',                  // proxy mode only
+  getAuthHeaders: async () => ({}),     // proxy mode: attach the host app's session token
+  providers: {                          // optional presets/overrides
+    anthropic: { enabled, apiKey, model, baseUrl },
+    openai:    { enabled, apiKey, model, baseUrl, apiStyle: 'responses' | 'chat_completions' },
+    gemini:    { enabled, apiKey, model, baseUrl },
+  },
+  defaultProvider: 'anthropic',
+  defaults: { maxTokens: 4096, temperature: undefined },
+  timeouts: { firstByteMs: 30000, idleMs: 60000 },
+  allowKeyEntry: true,                  // false hides key fields (host injects keys or uses the proxy)
+  storage: customAdapter,               // optional
+  modelFilter: (providerId, model) => true,  // optional
+  label: 'AI Models',
+});
+
+AIConnector.mount(target, options)            // → { el, destroy() }
+AIConnector.getProviders()                    // → [{ id, label, enabled, connected, model, status, lastError }]
+AIConnector.isReady(providerId?)              // → boolean (any provider if no id is given)
+AIConnector.listModels(providerId, { refresh }) // → Promise<[{ id, label, created? }]>
+AIConnector.testConnection(providerId)        // → Promise<{ ok, error? }>
+AIConnector.setModel(providerId, modelId)
+AIConnector.setDefaultProvider(providerId)
+AIConnector.getDefaultProvider()
+AIConnector.openSettings(providerId?)         // optionally scrolls to and highlights one provider
+AIConnector.closeSettings()
+
+AIConnector.chat(request)    // → Promise<ChatResult>
+AIConnector.stream(request)  // → StreamHandle: async-iterable of StreamEvent,
+                             //   plus .abort() and .result (Promise<ChatResult>)
+
+AIConnector.on(eventName, handler);  AIConnector.off(eventName, handler);
+
+// Request
+{
+  provider?: 'anthropic' | 'openai' | 'gemini',  // default provider if omitted
+  model?: string,                                 // provider's selected model if omitted
+  system?: string,
+  messages: [{ role: 'user' | 'assistant', content: string }],
+  maxTokens?: number, temperature?: number,
+  signal?: AbortSignal,
+  onToken?: (text) => void, onDone?: (result) => void, onError?: (err) => void,
+}
+
+// StreamEvent
+{ type: 'start', provider, model } | { type: 'delta', text } |
+{ type: 'done', result } | { type: 'error', error }
+
+// ChatResult
+{ text, provider, model, stopReason, usage: { inputTokens, outputTokens }, raw }
+
+// AIConnectorError extends Error
+{ code: 'no_provider' | 'no_key' | 'invalid_key' | 'permission' | 'rate_limited' | 'overloaded' |
+        'context_too_long' | 'blocked' | 'bad_request' | 'model_not_found' | 'cors_or_network' |
+        'timeout' | 'server' | 'unknown',
+  status, provider, retryable, message /* human-readable, safe to show */, raw }
+```
+
+**Error mapping:**
+
+| Condition | Error code |
+|---|---|
+| HTTP 401 | `invalid_key` |
+| HTTP 403 | `permission` |
+| HTTP 404 on a model | `model_not_found` |
+| HTTP 413, or a provider context-length message | `context_too_long` |
+| HTTP 429 | `rate_limited` (read `retry-after`) |
+| HTTP 529 (Anthropic) or 503 | `overloaded` |
+| Other 5xx | `server` |
+| `fetch` throws `TypeError` | `cors_or_network` |
+| First-byte or idle timeout | `timeout` |
+
+- Parse each provider's JSON error body to get its message.
+- For `cors_or_network`, the message should name the usual causes: offline, ad blocker, CSP `connect-src`, or a corporate proxy.
+- List-models calls may retry up to 2 times with backoff on `rate_limited` or `overloaded`. Chat calls never auto-retry, except the unsupported-param case above.
+
+**Events:** `ready`, `open`, `close`, `provider-change` (enabled, connected, or model changed; the detail is the providers list), `default-change`, `error`. Emit each via `AIConnector.on`, AND as a DOM `CustomEvent` named `aic:<name>` on `window` (with `bubbles` and `composed`) so any framework can listen.
+
+## Proxy mode contract
+- Chat request: `POST {proxyUrl}/chat` with JSON body `{ provider, model, system, messages, maxTokens, temperature }`, plus the headers from `getAuthHeaders()`.
+- Chat response: an SSE stream of the unified StreamEvents as JSON, for example `data: {"type":"delta","text":"..."}`, ending with a `done` event.
+- Errors: an HTTP status plus a body of `{ error: { code, message } }`.
+- `GET {proxyUrl}/providers` returns `[{ id, configured, models }]`.
+- In proxy mode the panel hides all key fields. It shows each server-configured provider with a status and a model picker, plus a proxy health check.
+- The browser never holds keys in proxy mode.
+
+## UI specification
+
+### Menu item: `<ai-connector-menu>`
+- It must look native to the host's nav.
+  - Use `font: inherit; color: inherit` and inherit spacing by default.
+  - Provide slots `icon` and `label` so the host can supply its own markup.
+  - The default icon is a neutral inline SVG (plug or sparkle).
+  - Do not embed provider brand logos. Use text names.
+- It renders a `<button>` with `aria-expanded` and `aria-controls`. The host wraps it in its own `<li>` if its nav uses lists.
+- A status dot shows grey when nothing is connected, green when 1 or more providers are connected, and amber when a saved key failed its last test. A tooltip reads, for example, "2 of 3 connected".
+- Attributes:
+  - `label`
+  - `panel="drawer|inline|modal"` (default `drawer`)
+  - `side="left|right"` (default `right`)
+  - `theme="auto|light|dark"`
+  - `collapsed`: icon-only, label shown as a tooltip. Also switch to this automatically when the element is narrower than 80px, using a ResizeObserver.
+- Click, Enter, and Space toggle the panel. Call `preventDefault()` on clicks. Never touch `location` or history, and never trigger the host router.
+
+### Panel
+- **Portal:** render the drawer and modal into a single portal node appended to `document.body`, with its own shadow root. This keeps it from being clipped by a sidebar with `overflow: hidden`, a `transform`, or stacking contexts. Inline mode expands under the menu item instead.
+- **Dialog behavior:**
+  - `role="dialog"`, `aria-modal="true"`, and `aria-labelledby`.
+  - Trap focus inside the panel.
+  - Esc closes it, and so does clicking the backdrop.
+  - Focus returns to the menu item on close.
+  - Lock body scroll while open and restore the previous value on close.
+  - Respect `prefers-reduced-motion`.
+- **Size:** 380px wide on desktop, full screen below 600px.
+- **Contents, top to bottom:**
+  1. A header reading "AI connections", with a close button.
+  2. A security note, in Direct mode only. Keep it short and honest: "Keys are stored in this browser and sent directly to the provider. Anyone with access to this browser profile can read them." Link it to the README security section.
+  3. One card per provider:
+     - name and a status pill: "Not set up", "Connected", or "Error: <short reason>"
+     - an enable toggle
+     - an API key field: `type="password"` with a show/hide toggle; once saved, show it masked as `••••abcd` with a Clear button
+     - a "Where do I get a key?" link to that provider's console
+     - a "Test connection" button: it calls list-models and shows the result in an `aria-live` region
+     - a model select, populated after a successful test, with Refresh and "Custom ID…" options
+     - an "Advanced" disclosure containing a base URL override, and for OpenAI only, the API style
+  4. Global settings:
+     - a default provider radio group (connected providers only)
+     - a "Remember keys on this device" checkbox; changing it moves keys between session and local storage immediately
+     - "Forget all keys", which asks for confirmation first
+- **Saving:** auto-save on change and show a subtle "Saved" indicator. Automatically test a key shortly after it is entered (debounced).
+
+### Theming
+- Expose every color, radius, and spacing value as a CSS custom property with a sensible default: `--aic-accent`, `--aic-bg`, `--aic-surface`, `--aic-text`, `--aic-muted`, `--aic-border`, `--aic-danger`, `--aic-success`, `--aic-warning`, `--aic-radius`, `--aic-font`, `--aic-z`.
+- Custom properties pass through Shadow DOM, so the host themes the component from `:root` or any ancestor.
+- Support light and dark via the `theme` attribute or `prefers-color-scheme`.
+- Expose `::part()` names for the menu item, panel, card, input, and button.
+
+## Security requirements
+- Never log keys. Never put keys in DOM attributes, events, error objects, or `raw` payloads; redact them.
+- Do not implement fake "encryption" (base64, a hard-coded secret, etc.). It adds no security and suggests otherwise. Either skip encryption or make it opt-in and passphrase-based using WebCrypto.
+- The README must state plainly:
+  - Direct mode is for bring-your-own-key and internal tools.
+  - Production apps with shared keys must use Proxy mode.
+  - The host's CSP needs a `connect-src` entry for `api.anthropic.com`, `api.openai.com`, and `generativelanguage.googleapis.com`.
+
+## Robustness requirements
+- Guard registration with `customElements.get(...)` so loading the script twice is harmless.
+- Mount and unmount must be safe under repeated framework re-renders: `disconnectedCallback` removes every listener and observer, and the component never creates a duplicate portal.
+- Create no global CSS and no globals besides `window.AIConnector`. Do not change any host DOM outside the component's own elements and the single portal node.
+- Use one shared state store, so multiple `<ai-connector-menu>` instances (for example a desktop sidebar plus a mobile menu) stay in sync.
+- Sync across tabs via the `storage` event when using localStorage.
+- Keep the code small and readable. Prefer clarity over cleverness.
+
+## Acceptance criteria
+- [ ] In `demo.html`, the menu item matches its neighbours in both the expanded and collapsed sidebar, with no layout shift.
+- [ ] The panel is not clipped by the sidebar.
+- [ ] For each provider: a valid key shows "Connected" and lists models; a bad key shows "Invalid API key"; going offline shows the network message.
+- [ ] `AIConnector.stream()` streams tokens for all three providers.
+- [ ] Aborting cancels the network request (visible in DevTools) and resolves with the partial text and `stopped`.
+- [ ] One conversation can be sent to Claude, then Gemini, then OpenAI without errors.
+- [ ] Mounting and unmounting the element 100 times in a loop leaves no leaked listeners and no extra portal nodes.
+- [ ] Keys never appear in the console, the DOM, events, or errors.
+- [ ] It works in current Chrome, Firefox, and Safari, is fully keyboard operable, and passes basic axe checks.
+- [ ] Every test in `tests.html` passes.
+
+## Output format
+1. Start with your assumptions and decisions, in 10 bullets or fewer.
+2. Then give each file in full, in its own code block, headed by its filename.
+3. End with a short list of anything you could not verify, such as exact streaming event names or CORS behaviour, and how I can check each one.

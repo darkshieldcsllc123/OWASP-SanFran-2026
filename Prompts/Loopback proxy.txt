@@ -1,0 +1,200 @@
+# Role
+You are a senior Node.js engineer with deep experience in HTTP internals, networking, and developer tooling. Build a production-quality **loopback proxy** in Node.js as specified below. Write complete, working code: no placeholders, no "TODO: implement", no pseudo-code.
+
+# What we're building
+A local proxy server that binds only to the loopback interface (127.0.0.1 / ::1) and routes traffic for local development. It supports two modes that can run at the same time:
+
+1. **Reverse proxy mode**: requests like `http://api.localhost:8080/users` are routed by hostname and/or path to upstream targets (e.g. `http://127.0.0.1:3001`).
+2. **Forward proxy mode**: the proxy can be set as an HTTP proxy in a browser or via `HTTP_PROXY`/`HTTPS_PROXY`. It handles absolute-form HTTP requests and tunnels HTTPS with `CONNECT`.
+
+Think of it as a lightweight, scriptable cross between a dev reverse proxy and a debugging proxy, with a strong focus on HTTP correctness and streaming.
+
+# Technical constraints
+- Node.js 22 LTS (minimum 20). ESM modules.
+- TypeScript with `strict: true`, built with `tsc` (use `tsx` for dev).
+- Core proxy logic uses only Node built-ins: `node:http`, `node:https`, `node:net`, `node:tls`, `node:stream` (`pipeline`), `node:events`, `node:crypto`, `node:fs`, `node:util`. Do NOT use `http-proxy`, `http-proxy-middleware`, Express, or Fastify.
+- Allowed dependencies: `zod` for config validation. Use `util.parseArgs` for the CLI. Justify any other dependency before adding it.
+- Tests use `node:test` and `node:assert`. No Jest.
+- Bodies must stream end-to-end. Never buffer full request or response bodies in memory (except small, explicitly configured features like mock responses).
+
+# Functional requirements
+
+## 1. Listeners
+- Default bind: `127.0.0.1:8080`. Support `::1` and multiple listeners.
+- Refuse to bind to a non-loopback address unless `--allow-external` is passed, and print a prominent warning when it is.
+- Reject connections whose `socket.remoteAddress` is not loopback (127.0.0.0/8, ::1, ::ffff:127.x.x.x) unless external access is allowed.
+- Optional HTTPS listener (default port 8443) using either user-supplied cert/key paths or an auto-generated self-signed cert for `localhost` and `*.localhost`, stored in `~/.loopback-proxy/certs/`. Support SNI so different hostnames can use different certs.
+
+## 2. Reverse proxy routing
+- Routes are evaluated in order; first match wins. A route can match on any combination of: hostname (exact or wildcard like `*.localhost`), path prefix, path regex, HTTP method, header presence/value.
+- Each route has a `target` URL plus options: `stripPrefix`, `rewritePath` (regex → replacement), `changeOrigin` (rewrite `Host` to the target's host), `headers.request.set/remove`, `headers.response.set/remove`, `timeoutMs`, `insecureTLS` (skip upstream cert verification; off by default), `websocket` (default true).
+- `target` may be an array: round-robin across targets with passive health checks (mark a target down for N seconds after a connection failure, then retry).
+- Correctly join a target's base path with the incoming path (`http://127.0.0.1:3001/base` + `/users` → `/base/users`).
+- No match → 404 with a helpful body listing configured hostnames.
+
+## 3. Forward proxy
+- Handle absolute-form requests (`GET http://example.com/ HTTP/1.1`).
+- Handle `CONNECT host:port` via the server's `'connect'` event: open a TCP socket, reply `HTTP/1.1 200 Connection Established`, write any `head` buffer upstream, then pipe bidirectionally.
+- Allow/deny lists for forward targets (hostname globs and ports). Default: allow all, but always block connections to the proxy's own listen addresses.
+- Optional proxy auth (`Proxy-Authorization: Basic`), returning 407 with `Proxy-Authenticate` when missing or invalid. Compare credentials with `crypto.timingSafeEqual`.
+- HTTPS interception (MITM) is OUT OF SCOPE. CONNECT tunnels are opaque.
+
+## 4. WebSockets and upgrades
+- Proxy WebSocket upgrades via the server's `'upgrade'` event. Forward the upstream's 101 response and headers to the client, then pipe both sockets.
+- Reject other upgrade protocols (e.g. h2c) with 400 unless a route explicitly allows them.
+- Destroy both sockets when either side closes or errors.
+
+## 5. HTTP correctness
+- Strip hop-by-hop headers in both directions: `Connection`, `Keep-Alive`, `Proxy-Connection`, `Proxy-Authenticate`, `Proxy-Authorization`, `TE`, `Trailer`, `Transfer-Encoding`, `Upgrade`, plus any header named in the `Connection` header's value (RFC 9110 §7.6.1).
+- Append `X-Forwarded-For`, and set `X-Forwarded-Proto`, `X-Forwarded-Host`, `X-Forwarded-Port`, and `Via: 1.1 loopback-proxy`. Optionally emit RFC 7239 `Forwarded`.
+- Preserve duplicate headers, especially multiple `Set-Cookie` headers (use `rawHeaders` and array values).
+- When `changeOrigin` is on, optionally rewrite `Set-Cookie` `Domain` attributes and rewrite `Location` headers on 3xx responses back to the proxy's origin (`rewriteRedirects: true`).
+- Handle `Expect: 100-continue`, HEAD (no body), 204/304 (no body), chunked responses, trailers, and aborts: destroy the upstream request when the client disconnects, and vice versa.
+- Use `stream.pipeline` for every pipe so errors and backpressure propagate.
+
+## 6. Loop detection (critical for a loopback proxy)
+- Reject requests that would route back into the proxy: check incoming `Via` for the proxy's own token, compare the resolved target host:port against all listen addresses (including `localhost`, `127.0.0.1`, `::1` equivalents), and maintain an `X-Loopback-Proxy-Hops` counter with a configurable max (default 5).
+- Respond with 508 Loop Detected.
+
+## 7. Security
+- DNS rebinding protection: in reverse proxy mode, only accept `Host` values that match configured routes, `localhost`, `*.localhost`, or loopback IPs. Otherwise respond 421 Misdirected Request.
+- Enforce `maxHeaderSize`, `headersTimeout`, `requestTimeout`, and a max concurrent connection limit.
+- Redact `Authorization`, `Proxy-Authorization`, `Cookie`, and `Set-Cookie` values in all logs.
+- Admin endpoints are served only to loopback clients.
+
+## 8. Timeouts, pooling, and errors
+- Per-route `connectTimeoutMs` (default 5000), `idleTimeoutMs` (default 60000), and an overall response timeout.
+- One keep-alive `http.Agent` / `https.Agent` per upstream origin with sensible `maxSockets`.
+- Map errors to status codes: `ECONNREFUSED`/`ENOTFOUND`/`EHOSTUNREACH`/`ECONNRESET` before headers → 502; timeouts → 504; loop → 508; proxy auth → 407; bad host → 421.
+- Error bodies are JSON if the client accepts JSON, otherwise plain text, and include the request ID.
+- If response headers were already sent when an error happens, destroy the client socket instead of writing a new response.
+
+## 9. Logging and observability
+- Every request gets a request ID: reuse a valid incoming `X-Request-Id`, otherwise generate one, and forward it upstream.
+- One log line per completed request: timestamp, request ID, method, host, path, route name, target, status, duration (ms), bytes in/out, error code.
+- Two formats: pretty colored output (default on TTY) and JSON lines (`--log-format json`). Levels: `error | warn | info | debug`.
+- Admin endpoints under a reserved `/__proxy/` prefix (or a separate `--admin-port`):
+  - `GET /__proxy/health` → `{ status, uptime, version }`
+  - `GET /__proxy/routes` → currently active resolved routes
+  - `GET /__proxy/stats` → counts by route and status class, active connections, upstream health
+
+## 10. Configuration
+- Config file `loopback-proxy.config.json` (also accept `.js`/`.mjs` with a default export), validated with zod. Print precise, human-readable errors including the JSON path of each problem.
+- Precedence: CLI flags > env vars (`LOOPBACK_PROXY_PORT`, etc.) > config file > defaults. Document this.
+- Quick-start shorthand: `loopback-proxy --route api.localhost=http://127.0.0.1:3001 --route /static=http://127.0.0.1:4000`.
+- Hot reload: watch the config file, validate the new config, and swap routes atomically without dropping in-flight requests. On validation failure, keep the old config and log the error.
+
+Example config the implementation must accept:
+
+```json
+{
+  "listen": [{ "host": "127.0.0.1", "port": 8080 }],
+  "https": { "enabled": true, "port": 8443, "selfSigned": true },
+  "forwardProxy": { "enabled": true, "auth": null, "deny": ["*.internal"] },
+  "routes": [
+    {
+      "name": "api",
+      "match": { "host": "api.localhost", "pathPrefix": "/v1" },
+      "target": "http://127.0.0.1:3001",
+      "stripPrefix": true,
+      "changeOrigin": true,
+      "headers": { "request": { "set": { "X-Env": "dev" } } },
+      "timeoutMs": 10000
+    },
+    {
+      "name": "frontend",
+      "match": { "host": "app.localhost" },
+      "target": ["http://127.0.0.1:5173", "http://127.0.0.1:5174"],
+      "websocket": true
+    }
+  ]
+}
+```
+
+## 11. Developer conveniences (only after the core is solid)
+- `mock` routes: return a configured status, headers, and body (inline or from a file) with no upstream.
+- Fault injection per route: `delayMs` latency and a failure rate that returns a configured status.
+- Optional CORS injection per route (`cors: { origin: "*" }`), including preflight `OPTIONS` handling.
+
+## 12. Lifecycle and programmatic API
+- Graceful shutdown on SIGINT/SIGTERM: stop accepting connections, let in-flight requests finish up to a drain timeout (default 10s), then destroy remaining sockets and exit 0.
+- Expose a programmatic API alongside the CLI:
+
+```ts
+const proxy = await createProxy(config);
+await proxy.listen();
+proxy.updateConfig(newConfig);
+await proxy.close();
+```
+
+# Project structure
+Use this layout, or improve on it and explain why:
+
+```
+loopback-proxy/
+  src/
+    cli.ts
+    index.ts               # programmatic API
+    config/schema.ts       # zod schema + inferred types
+    config/load.ts         # file/env/CLI merge, hot reload
+    server/listeners.ts
+    server/httpHandler.ts
+    server/upgradeHandler.ts
+    server/connectHandler.ts
+    routing/matcher.ts
+    routing/balancer.ts
+    proxy/forward.ts       # core request forwarding
+    proxy/headers.ts       # hop-by-hop, X-Forwarded-*, rewrites
+    proxy/agents.ts
+    security/loopGuard.ts
+    security/hostGuard.ts
+    security/auth.ts
+    tls/certs.ts
+    admin/routes.ts
+    logging/logger.ts
+    util/errors.ts
+  test/
+    helpers/               # ephemeral upstream servers on port 0
+    *.test.ts
+  README.md
+  package.json
+  tsconfig.json
+```
+
+# Testing requirements
+Write integration tests that start real upstream servers on ephemeral ports (port 0) and hit the proxy with real HTTP clients. Cover at minimum:
+- Host- and path-based routing, prefix stripping, path rewriting, first-match ordering, base-path joining
+- Hop-by-hop stripping and X-Forwarded-* / Via headers
+- Multiple `Set-Cookie` headers preserved
+- Streaming: a 200 MB upload and download pass through with flat memory (assert RSS growth stays under ~50 MB)
+- Client abort mid-response destroys the upstream request
+- Upstream down → 502, slow upstream → 504, loop → 508, bad Host → 421, missing proxy auth → 407
+- WebSocket echo through the proxy, including close propagation
+- CONNECT tunnel to a local TLS server
+- Round-robin across two targets and failover when one is down
+- Hot reload swaps routes; invalid config keeps old routes
+- Graceful shutdown drains an in-flight request
+- Binding to `0.0.0.0` fails without `--allow-external`
+
+# Edge cases to handle explicitly
+- IPv6 literals in Host and CONNECT targets (`[::1]:3000`)
+- Encoded characters and double slashes in paths (don't normalize away meaning)
+- Upstream closing the connection before sending headers
+- Upstream responding before the request body is fully sent
+- Very large or malformed headers
+- `Connection: close` vs keep-alive clients
+- Upstream returning 101 to a non-upgrade request
+
+# How to deliver
+1. Start with a short design summary: request flow for normal HTTP, upgrades, and CONNECT; how hot reload swaps config atomically; how loop detection works. List any assumptions.
+2. Output the full file tree.
+3. Output every file in full, one at a time, with its path as a heading. No truncation or "rest of file unchanged".
+4. Write a README covering: install, quick start, full config reference (every option with type and default), CLI reference, trusting the self-signed cert on macOS/Windows/Linux, using it as a browser/system proxy, and troubleshooting.
+5. End with a checklist mapping each requirement section above to the files that implement it, plus known limitations.
+
+Build in this order and keep each stage working before moving on: listeners + basic reverse proxy → header correctness + error handling → WebSockets → forward proxy + CONNECT → loop and host guards → config + hot reload → logging + admin → TLS → conveniences. Write tests alongside each stage.
+
+# Quality bar
+- Readable code, with comments where HTTP behavior is subtle (cite the RFC section where useful).
+- No unhandled promise rejections or uncaught socket errors: every socket and stream gets an `'error'` handler.
+- `npm run build`, `npm test`, and `npm run lint` all pass.

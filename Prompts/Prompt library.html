@@ -1,0 +1,3153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Prompt library</title>
+<style>
+:root{
+  color-scheme:light;
+  --bg:#E7EBEF;
+  --panel:#FFFFFF;
+  --panel-2:#F3F5F8;
+  --sunk:#DCE2E8;
+  --ink:#16202A;
+  --muted:#55606E;
+  --faint:#7F8A98;
+  --line:#D2D8DF;
+  --line-strong:#ABB5C1;
+  --accent:#16202A;
+  --accent-ink:#FFFFFF;
+  --hl:#FFE36E;
+  --hl-ink:#1D1A0E;
+  --pin:#D39314;
+  --danger:#B83A27;
+  --ok:#2C7A55;
+  --focus:#2F6BEA;
+  --overlay:rgba(22,32,42,.42);
+  --shadow:0 24px 60px -20px rgba(22,32,42,.45);
+  --fs:15px;
+  --r-sm:7px;
+  --r:10px;
+  --r-lg:16px;
+  --gap:14px;
+  --card-pad:14px 16px 12px 20px;
+  --lines:4;
+  --ui:"Avenir Next","Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,"Helvetica Neue",Roboto,Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono","Cascadia Code","JetBrains Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#151B22;--panel:#1E252E;--panel-2:#192028;--sunk:#29313C;
+    --ink:#E6EBF1;--muted:#A2ADBA;--faint:#7D8896;--line:#303945;--line-strong:#465261;
+    --accent:#E6EBF1;--accent-ink:#151B22;--hl:#E9C94A;--hl-ink:#17150A;--pin:#F0C04A;
+    --danger:#F08A73;--ok:#74C9A1;--focus:#7FA6FF;--overlay:rgba(6,9,13,.62);--shadow:0 24px 60px -20px rgba(0,0,0,.75);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#151B22;--panel:#1E252E;--panel-2:#192028;--sunk:#29313C;
+  --ink:#E6EBF1;--muted:#A2ADBA;--faint:#7D8896;--line:#303945;--line-strong:#465261;
+  --accent:#E6EBF1;--accent-ink:#151B22;--hl:#E9C94A;--hl-ink:#17150A;--pin:#F0C04A;
+  --danger:#F08A73;--ok:#74C9A1;--focus:#7FA6FF;--overlay:rgba(6,9,13,.62);--shadow:0 24px 60px -20px rgba(0,0,0,.75);
+}
+:root[data-density="compact"]{--gap:9px;--card-pad:10px 12px 9px 16px}
+
+*,*::before,*::after{box-sizing:border-box}
+html{height:100%;background:var(--bg);scroll-padding-top:env(safe-area-inset-top,0px);-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{height:100%;margin:0;background:var(--bg);color:var(--ink);font-family:var(--ui);font-size:var(--fs);line-height:1.5;-webkit-font-smoothing:antialiased;overflow:hidden}
+button,input,select,textarea{font:inherit;color:inherit;letter-spacing:inherit}
+button{cursor:pointer;-webkit-tap-highlight-color:transparent}
+button:disabled,select:disabled{cursor:not-allowed;opacity:.45}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+h1,h2,h3,p{margin:0}
+.sr-only{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.grow{flex:1 1 auto}
+.muted{color:var(--muted)}
+.ic{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+kbd{font-family:var(--mono);font-size:.74em;line-height:1;padding:3px 6px;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;background:var(--panel);color:var(--muted);white-space:nowrap}
+code{font-family:var(--mono);font-size:.88em;background:var(--sunk);padding:1px 5px;border-radius:4px}
+mark{background:color-mix(in srgb,var(--focus) 22%,transparent);color:inherit;border-radius:3px;padding:0 1px}
+
+/* The highlighter: fill-in fields are marked like a pen swipe */
+.var{font-family:var(--mono);font-size:.94em;color:var(--hl-ink);background:linear-gradient(100deg,transparent 0 .1em,var(--hl) .26em calc(100% - .26em),transparent calc(100% - .1em));padding:.04em .36em;margin:0 -.04em;border-radius:.32em .18em .36em .14em;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+.filled{background:linear-gradient(transparent 60%,var(--hl) 60%);-webkit-box-decoration-break:clone;box-decoration-break:clone}
+.filled.is-default{background:linear-gradient(transparent 60%,var(--sunk) 60%)}
+
+/* Controls */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;height:38px;padding:0 14px;border-radius:var(--r);border:1px solid var(--line);background:var(--panel);color:var(--ink);font-weight:600;font-size:.92em;white-space:nowrap;transition:background-color .12s,border-color .12s,color .12s}
+.btn:hover:not(:disabled){border-color:var(--line-strong)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover:not(:disabled){filter:brightness(1.12);border-color:var(--accent)}
+.btn.ghost{background:transparent;border-color:transparent}
+.btn.ghost:hover:not(:disabled){background:var(--sunk);border-color:transparent}
+.btn.danger{color:var(--danger)}
+.btn.danger-solid{background:var(--danger);border-color:var(--danger);color:#fff}
+.btn.sm{height:30px;padding:0 10px;font-size:.84em;border-radius:8px;gap:6px}
+.btn.sm .ic{width:16px;height:16px}
+.btn.copied{background:var(--ok);border-color:var(--ok);color:#fff}
+.icon-btn{width:38px;height:38px;display:inline-grid;place-items:center;border-radius:var(--r);border:1px solid transparent;background:none;color:var(--muted);flex:none;padding:0}
+.icon-btn:hover:not(:disabled){background:var(--sunk);color:var(--ink)}
+.icon-btn[aria-pressed="true"]{background:var(--panel);border-color:var(--line);color:var(--ink)}
+.icon-btn.sm{width:30px;height:30px;border-radius:8px}
+.icon-btn.sm .ic{width:16px;height:16px}
+.pin.on,.pin.on[aria-pressed="true"]{color:var(--pin);background:none;border-color:transparent}
+.pin.on:hover{background:var(--sunk)}
+.pin.on .ic{fill:var(--pin);stroke:var(--pin)}
+.link{border:0;background:none;padding:0;color:var(--muted);text-decoration:underline;text-decoration-color:var(--line-strong);text-underline-offset:3px;font-size:.88em;font-weight:500}
+.link:hover{color:var(--ink);text-decoration-color:currentColor}
+.seg{display:inline-flex;padding:3px;background:var(--sunk);border-radius:var(--r);gap:2px;flex:none}
+.seg > button{height:30px;border:0;background:none;padding:0 11px;border-radius:7px;color:var(--muted);font-weight:600;font-size:.88em;display:inline-flex;align-items:center;gap:6px}
+.seg > button.icon-only{width:34px;padding:0;justify-content:center}
+.seg > button:hover{color:var(--ink)}
+.seg > button[aria-pressed="true"],.seg > button[aria-selected="true"]{background:var(--panel);color:var(--ink);box-shadow:0 0 0 1px var(--line)}
+.select-wrap{position:relative;display:inline-flex;flex:none}
+.select-wrap .ic{position:absolute;right:9px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--muted);width:16px;height:16px}
+select.control{appearance:none;-webkit-appearance:none;height:38px;border:1px solid var(--line);background:var(--panel);border-radius:var(--r);padding:0 32px 0 12px;font-size:.92em;font-weight:500;cursor:pointer;max-width:100%}
+select.control.sm{height:30px;font-size:.84em;border-radius:8px;padding-left:10px}
+select.control.full{width:100%}
+.select-wrap.full{display:flex;width:100%}
+input[type="text"],input[type="search"],textarea{width:100%;border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:9px 11px;line-height:1.45;font-size:.95em}
+input[type="text"]:focus,input[type="search"]:focus,textarea:focus,select.control:focus{outline:none;border-color:var(--focus);box-shadow:0 0 0 3px color-mix(in srgb,var(--focus) 24%,transparent)}
+textarea{resize:vertical}
+::placeholder{color:var(--faint);opacity:1}
+input[list]::-webkit-calendar-picker-indicator{display:none!important;opacity:0}
+
+/* Layout */
+.app{height:100%;display:grid;grid-template-columns:262px minmax(0,1fr)}
+.sidebar{background:var(--panel-2);border-right:1px solid var(--line);overflow-y:auto;padding:18px 12px 14px;display:flex;flex-direction:column;gap:22px;min-height:0}
+.main{display:flex;flex-direction:column;min-width:0;min-height:0}
+.toolbar{flex:none;display:flex;align-items:center;gap:8px;padding:12px 22px;border-bottom:1px solid var(--line);background:var(--bg);flex-wrap:wrap}
+.menu-btn{display:none}
+.search{position:relative;flex:1 1 240px;min-width:170px;max-width:540px}
+.search > .ic{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--faint);pointer-events:none}
+.search input{height:38px;padding:0 44px 0 36px;border-radius:var(--r)}
+.search kbd{position:absolute;right:10px;top:50%;transform:translateY(-50%);pointer-events:none}
+.search input:focus ~ kbd,.search input:not(:placeholder-shown) ~ kbd{display:none}
+.tb-group{display:flex;align-items:center;gap:4px;flex:none}
+.toolbar .spacer{flex:1 1 0;min-width:0}
+.content{flex:1;min-height:0;overflow-y:auto;padding:14px 22px 56px;overscroll-behavior:contain}
+
+/* Sidebar */
+.brand{display:flex;align-items:center;gap:10px;padding:2px 8px}
+.brand-mark{width:28px;height:28px;flex:none;color:var(--ink)}
+.brand h1{font-size:1.08em;font-weight:700;letter-spacing:-.012em;flex:1}
+.close-side{display:none}
+.nav{display:flex;flex-direction:column;gap:1px}
+.nav-item{display:flex;align-items:center;gap:10px;width:100%;min-height:34px;padding:6px 10px;border:0;background:none;border-radius:var(--r-sm);text-align:left;color:var(--ink);font-size:.93em;position:relative}
+.nav-item:hover{background:var(--sunk)}
+.nav-item[aria-current="true"]{background:var(--panel);box-shadow:0 0 0 1px var(--line);font-weight:650}
+.nav-label{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nav-item .count{margin-left:auto;color:var(--faint);font-size:.84em;font-variant-numeric:tabular-nums;font-weight:500}
+.nav-item .dot{width:10px;height:10px;border-radius:3px;background:var(--c,var(--line-strong));flex:none}
+.nav-item.drop-target{background:var(--panel);box-shadow:0 0 0 2px var(--accent)}
+.side-head{display:flex;align-items:center;gap:2px;padding:0 2px 6px 10px}
+.side-head h2{font-size:.82em;font-weight:650;color:var(--muted);flex:1}
+.side-empty{font-size:.84em;color:var(--muted);padding:2px 10px;line-height:1.5}
+.add-cat{padding:4px 4px 2px}
+.add-cat input{height:34px;padding:0 10px}
+.tag-cloud{display:flex;flex-wrap:wrap;gap:5px;padding:0 6px}
+.more-tags{margin:8px 10px 0}
+.side-foot{margin-top:auto;padding:12px 8px 0;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
+.stats{font-size:.82em;color:var(--muted)}
+.sync{display:flex;align-items:flex-start;gap:8px;font-size:.8em;color:var(--muted);line-height:1.4}
+.sync-dot{width:8px;height:8px;border-radius:50%;background:var(--faint);flex:none;margin-top:.35em}
+.sync[data-state="synced"] .sync-dot{background:var(--ok)}
+.sync[data-state="pending"] .sync-dot,.sync[data-state="saving"] .sync-dot,.sync[data-state="connecting"] .sync-dot{background:var(--pin)}
+.sync[data-state="error"] .sync-dot,.sync[data-state="offline"] .sync-dot,.sync[data-state="blocked"] .sync-dot{background:var(--danger)}
+.side-actions{display:flex;gap:2px;margin:0 -6px}
+
+/* Tags */
+.tag{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 8px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--muted);font-size:.79em;line-height:1;white-space:nowrap}
+button.tag:hover{color:var(--ink);border-color:var(--line-strong)}
+.tag.on{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.tag-n{color:var(--faint);font-variant-numeric:tabular-nums}
+.tag.on .tag-n{color:inherit;opacity:.7}
+.tag.static{cursor:default}
+.chip{display:inline-flex;align-items:center;gap:2px;height:26px;padding:0 3px 0 10px;border-radius:999px;background:var(--panel);border:1px solid var(--line);font-size:.86em;color:var(--ink);max-width:100%}
+.chip > span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chip-x{width:20px;height:20px;border:0;background:none;border-radius:50%;display:grid;place-items:center;color:var(--muted);padding:0;flex:none}
+.chip-x:hover{background:var(--sunk);color:var(--ink)}
+.chip-x .ic{width:13px;height:13px;stroke-width:2.2}
+
+/* Filter bar and bulk bar */
+.filterbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-height:28px;margin-bottom:12px;font-size:.9em;color:var(--muted)}
+.result-count{font-weight:600;color:var(--ink);margin-right:4px}
+.filterbar .hint{margin-left:auto;font-size:.92em;color:var(--faint)}
+.bulkbar{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 10px;margin:0 0 12px;background:var(--panel);border:1px solid var(--accent);border-radius:var(--r)}
+.bulkbar[hidden]{display:none}
+.bulk-count{font-size:.9em;margin:0 6px 0 4px}
+
+/* Cards */
+.cards.as-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(272px,1fr));gap:var(--gap);align-items:stretch}
+.cards.as-list{display:flex;flex-direction:column;gap:6px}
+.card{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:var(--card-pad);display:flex;flex-direction:column;gap:8px;cursor:pointer;min-width:0;transition:border-color .12s}
+.card::before{content:"";position:absolute;left:-1px;top:12px;bottom:12px;width:5px;border-radius:0 4px 4px 0;background:var(--cat)}
+.card:hover{border-color:var(--line-strong)}
+.card:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.card.is-selected{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.card.dragging{opacity:.4}
+.card.drop-target{outline:2px dashed var(--accent);outline-offset:3px}
+.card-head{display:flex;align-items:center;gap:8px;min-height:26px;margin:-4px -8px -2px 0}
+.card-cat{display:inline-flex;align-items:center;font-size:.78em;font-weight:600;color:var(--muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card .pin{margin-left:auto;width:30px;height:30px;border-radius:8px}
+.card .pin .ic{width:17px;height:17px}
+.checkbox{width:20px;height:20px;border-radius:6px;border:1.5px solid var(--line-strong);display:grid;place-items:center;flex:none;background:var(--panel)}
+.checkbox .ic{width:14px;height:14px;opacity:0;stroke-width:2.8}
+.checkbox.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.checkbox.on .ic{opacity:1}
+.card-title{font-size:1.04em;font-weight:650;line-height:1.3;letter-spacing:-.006em;overflow-wrap:anywhere}
+.card-preview{font-family:var(--mono);font-size:.8em;line-height:1.6;color:var(--muted);white-space:pre-wrap;overflow-wrap:anywhere;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:var(--lines);line-clamp:var(--lines)}
+.card-tags{display:flex;flex-wrap:wrap;gap:5px}
+.card-foot{display:flex;align-items:center;gap:8px;margin-top:auto;padding-top:2px}
+.card-stat{font-size:.79em;color:var(--faint);min-width:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card-actions{display:flex;gap:4px;flex:none}
+.selecting .card-actions{visibility:hidden}
+
+.cards.as-list .card{display:grid;grid-template-columns:minmax(150px,26%) minmax(0,1fr) auto;grid-template-areas:"title preview foot" "head tags foot";column-gap:18px;row-gap:2px;align-items:center;padding:9px 12px 9px 20px}
+.as-list .card::before{top:8px;bottom:8px}
+.as-list .card-head{grid-area:head;margin:0;min-height:24px}
+.as-list .card .pin{width:26px;height:26px}
+.as-list .card-title{grid-area:title;font-size:.97em}
+.as-list .card-preview{grid-area:preview;-webkit-line-clamp:1;line-clamp:1}
+.as-list .card-tags{grid-area:tags;flex-wrap:nowrap;overflow:hidden}
+.as-list .card-foot{grid-area:foot;margin:0;padding:0}
+.as-list .card-stat{flex:none;width:9em;text-align:right}
+
+/* Empty state */
+.empty{max-width:460px;padding:48px 4px}
+.empty h2{font-size:1.4em;font-weight:700;letter-spacing:-.015em;margin-bottom:8px}
+.empty p{color:var(--muted);margin-bottom:18px;line-height:1.6}
+.empty-actions{display:flex;flex-wrap:wrap;gap:8px}
+
+/* Drawer */
+.scrim{position:fixed;inset:0;background:var(--overlay);opacity:0;pointer-events:none;transition:opacity .18s;z-index:50}
+.scrim.on{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(620px,100%);background:var(--panel);border-left:1px solid var(--line);z-index:60;display:flex;flex-direction:column;transform:translateX(104%);visibility:hidden;transition:transform .24s cubic-bezier(.2,.8,.2,1),visibility 0s linear .24s;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);box-shadow:var(--shadow)}
+.drawer.open{transform:none;visibility:visible;transition:transform .24s cubic-bezier(.2,.8,.2,1),visibility 0s}
+.drawer-head{display:flex;align-items:center;gap:4px;padding:10px 12px 10px 16px;border-bottom:1px solid var(--line);flex:none}
+.drawer-heading{font-size:1.02em;font-weight:700}
+.drawer-body{flex:1;min-height:0;overflow-y:auto;padding:22px 24px 28px;overscroll-behavior:contain}
+.drawer-foot{display:flex;align-items:center;gap:8px;padding:12px 16px;border-top:1px solid var(--line);flex:none;flex-wrap:wrap}
+.hint{font-size:.8em;color:var(--faint);display:inline-flex;align-items:center;gap:4px}
+.d-top{display:flex;align-items:center;gap:12px;margin-bottom:10px;min-height:28px}
+.d-cat{display:inline-flex;align-items:center;gap:7px;font-size:.85em;font-weight:600;color:var(--muted)}
+.d-cat::before{content:"";width:10px;height:10px;border-radius:3px;background:var(--c)}
+.d-top .stars{margin-left:auto}
+.d-title{font-size:1.6em;line-height:1.18;font-weight:700;letter-spacing:-.02em;overflow-wrap:anywhere}
+.d-meta{margin-top:7px;color:var(--muted);font-size:.87em}
+.d-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:12px}
+.d-section{margin-top:26px}
+.d-section-head{display:flex;align-items:baseline;gap:12px;margin-bottom:10px}
+.d-section h3{font-size:.9em;font-weight:650}
+.d-count{margin-left:auto;font-size:.8em;color:var(--faint)}
+.fill-field{display:grid;grid-template-columns:minmax(96px,32%) minmax(0,1fr);gap:12px;align-items:start;padding:8px 0;border-top:1px solid var(--line)}
+.fill-field:first-of-type{border-top:0;padding-top:0}
+.fill-field > .var{justify-self:start;margin-top:8px;font-size:.84em;overflow-wrap:anywhere}
+.fill-field textarea{resize:none;min-height:40px;max-height:260px;overflow-y:auto}
+.d-preview{font-family:var(--mono);font-size:.86em;line-height:1.7;white-space:pre-wrap;overflow-wrap:anywhere;background:var(--panel-2);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;-webkit-user-select:text;user-select:text}
+.d-notes{white-space:pre-wrap;color:var(--muted);font-size:.93em;line-height:1.6}
+
+.stars{display:inline-flex;gap:0}
+.stars button{width:28px;height:28px;border:0;background:none;padding:0;display:grid;place-items:center;color:var(--faint);border-radius:6px}
+.stars button .ic{width:18px;height:18px}
+.stars button.on{color:var(--pin)}
+.stars button.on .ic{fill:var(--pin)}
+.stars:hover button .ic{fill:var(--pin);stroke:var(--pin)}
+.stars:hover button:hover ~ button .ic{fill:none;stroke:var(--faint)}
+
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:18px;min-width:0}
+.label{font-size:.84em;font-weight:650;color:var(--muted)}
+.label-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.field-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:start}
+.field-row .stars{height:38px;align-items:center}
+textarea.mono{font-family:var(--mono);font-size:.88em;line-height:1.65;min-height:240px}
+.body-meta{display:flex;gap:6px 12px;align-items:center;flex-wrap:wrap;font-size:.8em;color:var(--faint);margin-top:2px}
+.body-meta .var{font-size:.92em}
+.vars-list{display:inline-flex;flex-wrap:wrap;gap:4px 6px;align-items:center}
+.help{font-size:.84em;color:var(--muted);margin:-8px 0 20px;line-height:1.55}
+.tag-input{display:flex;flex-wrap:wrap;gap:5px;align-items:center;min-height:40px;padding:5px 6px;border:1px solid var(--line);border-radius:8px;background:var(--panel);cursor:text}
+.tag-input:focus-within{border-color:var(--focus);box-shadow:0 0 0 3px color-mix(in srgb,var(--focus) 24%,transparent)}
+.tag-input input[type="text"]{flex:1;min-width:120px;border:0;padding:3px 4px;background:none;box-shadow:none}
+.tag-input input[type="text"]:focus{box-shadow:none}
+.history{border-top:1px solid var(--line);padding-top:12px}
+.history summary{cursor:pointer;font-weight:650;font-size:.88em;color:var(--muted);padding:4px 0}
+.history-list{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:10px}
+.history-list li{border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;background:var(--panel-2)}
+.h-meta{font-size:.8em;color:var(--faint)}
+.h-body{font-family:var(--mono);font-size:.78em;white-space:pre-wrap;overflow-wrap:anywhere;margin:6px 0 10px;color:var(--muted);max-height:8.5em;overflow:hidden}
+
+/* Modal */
+.modal-wrap{position:fixed;inset:0;z-index:80;display:grid;place-items:center;padding:max(16px,env(safe-area-inset-top,0px)) 16px max(16px,env(safe-area-inset-bottom,0px));background:var(--overlay)}
+.modal-wrap[hidden]{display:none}
+.modal{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-lg);width:min(440px,100%);max-height:100%;display:flex;flex-direction:column;box-shadow:var(--shadow);min-height:0}
+.modal.wide{width:min(700px,100%)}
+.modal-head{padding:16px 14px 6px 22px;display:flex;align-items:center;gap:8px;flex:none}
+.modal-head h2{font-size:1.14em;font-weight:700;letter-spacing:-.01em;flex:1}
+.modal-body{padding:6px 22px 18px;overflow-y:auto;min-height:0}
+.modal-text{color:var(--muted);line-height:1.55}
+.modal-foot{padding:12px 16px;display:flex;justify-content:flex-end;flex-wrap:wrap;gap:8px;border-top:1px solid var(--line);flex:none}
+
+.settings{display:flex;flex-direction:column;gap:24px}
+.set-section h3{font-size:.95em;font-weight:700;margin-bottom:4px}
+.set-row{display:grid;grid-template-columns:150px minmax(0,1fr);gap:8px 16px;align-items:center;padding:11px 0;border-top:1px solid var(--line)}
+.set-label{font-size:.88em;color:var(--muted);font-weight:600}
+.set-row > .seg,.set-row > .swatches,.set-row > .checks,.set-row > .range-row{justify-self:start}
+.set-row > .range-row{width:100%}
+.set-note{font-size:.86em;color:var(--muted);margin:2px 0 12px;line-height:1.55}
+.checks{display:flex;flex-wrap:wrap;gap:8px 18px}
+.check{display:inline-flex;align-items:center;gap:8px;font-size:.92em;cursor:pointer}
+.check input{width:16px;height:16px;accent-color:var(--accent);margin:0;flex:none}
+.radios{flex-wrap:wrap}
+.radios label{position:relative;display:inline-flex}
+.radios input{position:absolute;inset:0;opacity:0;margin:0;cursor:pointer}
+.radios span{display:inline-flex;align-items:center;height:30px;padding:0 11px;border-radius:7px;color:var(--muted);font-weight:600;font-size:.86em}
+.radios input:checked + span{background:var(--panel);color:var(--ink);box-shadow:0 0 0 1px var(--line)}
+.radios input:focus-visible + span{outline:2px solid var(--focus);outline-offset:1px}
+.swatches{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.swatch{position:relative;display:inline-grid;place-items:center}
+.swatch input{position:absolute;inset:0;opacity:0;margin:0;cursor:pointer}
+.swatch .sw{width:28px;height:28px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(0,0,0,.14)}
+.swatch input:checked + .sw{box-shadow:0 0 0 2px var(--panel),0 0 0 4px var(--ink)}
+.swatch input:focus-visible + .sw{outline:2px solid var(--focus);outline-offset:5px}
+.range-row{display:flex;align-items:center;gap:12px}
+.range-row input{flex:1;accent-color:var(--accent);max-width:260px}
+.range-row output{font-size:.88em;color:var(--muted);min-width:4.5em}
+.data-actions{display:flex;flex-wrap:wrap;gap:8px}
+.set-row > .pack-row{justify-self:stretch}
+.pack-row{display:flex;flex-direction:column;gap:8px;min-width:0}
+.pack-about{font-size:.88em;color:var(--muted);line-height:1.5}
+.pack-row .data-actions:empty{display:none}
+.cat-manage{display:flex;flex-direction:column;gap:6px;margin:14px 0}
+.cat-row{display:flex;align-items:center;gap:6px}
+.cat-row input[type="color"]{width:36px;height:36px;padding:3px;border:1px solid var(--line);border-radius:8px;background:var(--panel);cursor:pointer;flex:none}
+.cat-row input[type="text"]{flex:1;min-width:0}
+.cat-row .count{width:2.6em;text-align:right;color:var(--faint);font-size:.84em;font-variant-numeric:tabular-nums;flex:none}
+.cat-add-row{display:flex;gap:8px}
+.keys{width:100%;border-collapse:collapse}
+.keys td{padding:8px 0;border-top:1px solid var(--line);font-size:.92em;vertical-align:top}
+.keys tr:first-child td{border-top:0}
+.keys td:first-child{width:42%;white-space:nowrap;padding-right:12px}
+.keys kbd + kbd{margin-left:3px}
+
+/* Toasts */
+.toasts{position:fixed;left:50%;bottom:0;transform:translateX(-50%);padding:0 12px calc(18px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;align-items:center;gap:8px;z-index:90;pointer-events:none;width:max-content;max-width:100%}
+.toast{pointer-events:auto;background:var(--ink);color:var(--bg);padding:10px 12px 10px 16px;border-radius:12px;display:flex;gap:14px;align-items:center;font-size:.9em;max-width:min(540px,94vw);box-shadow:var(--shadow);animation:toast-in .2s ease-out}
+.toast.toast-warn{background:var(--danger);color:#fff}
+.toast.out{opacity:0;transform:translateY(6px);transition:opacity .16s,transform .16s}
+.toast-btn{border:0;background:none;color:inherit;font-weight:700;text-decoration:underline;text-underline-offset:3px;padding:4px;flex:none}
+@keyframes toast-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* Narrow screens */
+@media (max-width: 880px){
+  .app{grid-template-columns:minmax(0,1fr)}
+  .sidebar{position:fixed;top:0;bottom:0;left:0;width:min(300px,86vw);z-index:65;transform:translateX(-102%);visibility:hidden;transition:transform .22s cubic-bezier(.2,.8,.2,1),visibility 0s linear .22s;padding-top:calc(18px + env(safe-area-inset-top,0px));padding-bottom:calc(14px + env(safe-area-inset-bottom,0px));box-shadow:var(--shadow)}
+  .app[data-sidebar="open"] .sidebar{transform:none;visibility:visible;transition:transform .22s cubic-bezier(.2,.8,.2,1),visibility 0s}
+  .menu-btn,.close-side{display:inline-grid}
+  .toolbar{padding:10px 14px}
+  .content{padding:12px 14px 48px}
+  .filterbar .hint{display:none}
+}
+@media (max-width: 640px){
+  .search{order:-1;flex-basis:calc(100% - 46px);max-width:none}
+  .menu-btn{order:-2}
+  .search kbd,.hide-sm{display:none}
+  .toolbar .spacer{display:none}
+  .new-label{display:none}
+  #newBtn{width:38px;padding:0;margin-left:auto}
+  .toolbar{gap:6px}
+  .tb-group select.control{max-width:140px}
+  #viewSeg > button.icon-only{width:30px}
+  .cards.as-cards{grid-template-columns:minmax(0,1fr)}
+  .cards.as-list .card{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"head head" "title title" "preview preview" "tags foot";row-gap:4px}
+  .as-list .card-stat{display:none}
+  .drawer-body{padding:18px 16px 24px}
+  .fill-field{grid-template-columns:minmax(0,1fr);gap:6px}
+  .fill-field > .var{margin-top:0}
+  .field-row{grid-template-columns:minmax(0,1fr);gap:0}
+  .set-row{grid-template-columns:minmax(0,1fr)}
+  .d-title{font-size:1.4em}
+}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{transition-duration:0s!important;animation:none!important}
+}
+
+</style>
+</head>
+<body>
+<div class="app" id="app" data-sidebar="closed">
+  <aside class="sidebar" id="sidebar" aria-label="Library"></aside>
+  <main class="main">
+    <header class="toolbar">
+      <button class="icon-btn menu-btn" id="menuBtn" data-icon="menu" aria-label="Show categories and tags" aria-expanded="false"></button>
+      <div class="search">
+        <span data-icon="search"></span>
+        <input id="q" type="search" placeholder="Search prompts or #tags" aria-label="Search prompts" autocomplete="off" spellcheck="false">
+        <kbd>/</kbd>
+      </div>
+      <div class="tb-group">
+        <div class="select-wrap"><select id="sortSel" class="control" aria-label="Sort prompts by"></select><span data-icon="chev"></span></div>
+        <button class="icon-btn" id="dirBtn" aria-label="Reverse sort order"></button>
+      </div>
+      <div class="seg" id="viewSeg" aria-label="Layout">
+        <button class="icon-only" data-view="cards" data-icon="cards" aria-label="Card layout" title="Card layout"></button>
+        <button class="icon-only" data-view="list" data-icon="list" aria-label="List layout" title="List layout"></button>
+      </div>
+      <button class="icon-btn" id="selectBtn" data-icon="select" aria-label="Select several prompts" title="Select several prompts" aria-pressed="false"></button>
+      <span class="spacer"></span>
+      <button class="btn primary" id="newBtn" data-icon="plus" aria-label="New prompt"><span class="new-label">New prompt</span></button>
+    </header>
+    <div class="content" id="content">
+      <div class="bulkbar" id="bulkbar" hidden></div>
+      <div class="filterbar" id="filterbar"></div>
+      <div id="cards" class="cards as-cards"></div>
+    </div>
+  </main>
+</div>
+<div class="scrim" id="scrim"></div>
+<section class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="drawerTitle"></section>
+<div class="modal-wrap" id="modalWrap" hidden></div>
+<div class="toasts" id="toasts"></div>
+<input type="file" id="fileInput" accept=".json,.csv,application/json,text/csv" hidden>
+<script>
+(function () {
+'use strict';
+
+/* ================= Constants ================= */
+const LS_KEY = 'prompt-library:v1';
+const DAY = 864e5;
+const IS_MAC = /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent || '');
+const MOD = IS_MAC ? '⌘' : 'Ctrl';
+const PALETTE = ['#E2553F', '#3B8FD9', '#3E9C6E', '#8B5CC7', '#E9A23B', '#2A9D9A', '#D65A9A', '#5468D4', '#8DA34A', '#9A6B4F', '#6B7A8C'];
+const ACCENTS = {
+  ink:    { label: 'Ink',    light: '#16202A', dark: '#E6EBF1' },
+  cobalt: { label: 'Cobalt', light: '#2A57C4', dark: '#89A9F4' },
+  forest: { label: 'Forest', light: '#246E4E', dark: '#74C9A1' },
+  plum:   { label: 'Plum',   light: '#72388E', dark: '#CBA2E6' },
+  rust:   { label: 'Rust',   light: '#A84824', dark: '#F09C76' }
+};
+const HILITES = {
+  yellow: { label: 'Yellow', light: '#FFE36E', dark: '#E9C94A' },
+  mint:   { label: 'Mint',   light: '#A9EBC9', dark: '#72CF9F' },
+  pink:   { label: 'Pink',   light: '#FFC4DE', dark: '#EE97C0' },
+  sky:    { label: 'Sky',    light: '#BCDDFF', dark: '#84BAF1' }
+};
+const TEXT_SIZES = { s: '14px', m: '15px', l: '16.5px' };
+const DEFAULT_SETTINGS = {
+  theme: 'auto', accent: 'ink', hilite: 'yellow', density: 'comfortable', textSize: 'm',
+  view: 'cards', previewLines: 4,
+  show: { category: true, preview: true, tags: true, stats: true },
+  sort: 'uses', sortDir: 'desc', pinnedFirst: true,
+  countCopies: true, closeOnCopy: false, confirmDelete: true, openMode: 'use'
+};
+const ENUMS = {
+  theme: ['auto', 'light', 'dark'], accent: Object.keys(ACCENTS), hilite: Object.keys(HILITES),
+  density: ['comfortable', 'compact'], textSize: Object.keys(TEXT_SIZES), view: ['cards', 'list'],
+  sortDir: ['asc', 'desc'], openMode: ['use', 'edit']
+};
+const VAR_RE = /\{\{\s*([^{}:\n]+?)\s*(?::\s*([^{}]*?))?\s*\}\}/g;
+const SCOPE_LABELS = { all: 'All prompts', pinned: 'Pinned', recent: 'Used this month', unused: 'Never used', uncat: 'No category' };
+
+const ICONS = {
+  search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  star: '<path d="m12 3.6 2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.2-4.1 5.8-.8Z"/>',
+  copy: '<rect x="9" y="9" width="11" height="11" rx="2.2"/><path d="M15 5.5V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h.5"/>',
+  edit: '<path d="M4 20h4.2L19.4 8.8a2 2 0 0 0 0-2.8l-1.4-1.4a2 2 0 0 0-2.8 0L4 15.8V20Z"/><path d="m13.5 6.5 4 4"/>',
+  cards: '<rect x="4" y="4" width="7" height="7" rx="1.6"/><rect x="13" y="4" width="7" height="7" rx="1.6"/><rect x="4" y="13" width="7" height="7" rx="1.6"/><rect x="13" y="13" width="7" height="7" rx="1.6"/>',
+  list: '<path d="M9 6.5h11M9 12h11M9 17.5h11"/><path d="M4.5 6.5h.01M4.5 12h.01M4.5 17.5h.01" stroke-width="2.6"/>',
+  desc: '<path d="M7 4v16m0 0-3-3m3 3 3-3M13 6h7M13 11h5M13 16h3"/>',
+  asc: '<path d="M7 20V4m0 0L4 7m3-3 3 3M13 6h3M13 11h5M13 16h7"/>',
+  sliders: '<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',
+  x: '<path d="M6 6l12 12M18 6 6 18"/>',
+  menu: '<path d="M4 7h16M4 12h16M4 17h10"/>',
+  check: '<path d="m5 12.5 4.5 4.5L19 7"/>',
+  trash: '<path d="M4.5 7h15M10 7V5h4v2M6.5 7l.9 12.1a1 1 0 0 0 1 .9h7.2a1 1 0 0 0 1-.9L17.5 7"/>',
+  dup: '<rect x="8" y="8" width="12" height="12" rx="2.2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>',
+  select: '<rect x="4" y="4" width="16" height="16" rx="3.5"/><path d="m8.5 12.2 2.4 2.4 4.6-4.8"/>',
+  keyboard: '<rect x="3" y="6" width="18" height="12" rx="2.2"/><path d="M7 10h.01M10.5 10h.01M14 10h.01M17 10h.01M7.5 14h9"/>',
+  chev: '<path d="m7 10 5 5 5-5"/>',
+  up: '<path d="m7 14 5-5 5 5"/>',
+  down: '<path d="m7 10 5 5 5-5"/>',
+  download: '<path d="M12 4v11m-4.5-4.5L12 15l4.5-4.5M5 19.5h14"/>',
+  upload: '<path d="M12 15V4M7.5 8.5 12 4l4.5 4.5M5 19.5h14"/>',
+  tag: '<path d="M3.5 12.3V4.5a1 1 0 0 1 1-1h7.8l8.2 8.2a1 1 0 0 1 0 1.4l-7.4 7.4a1 1 0 0 1-1.4 0Z"/><circle cx="8" cy="8" r="1.3"/>',
+  braces: '<path d="M8.5 4.5c-2 0-2.5 1-2.5 2.5v2c0 1.5-.8 2.5-2 3 1.2.5 2 1.5 2 3v2c0 1.5.5 2.5 2.5 2.5M15.5 4.5c2 0 2.5 1 2.5 2.5v2c0 1.5.8 2.5 2 3-1.2.5-2 1.5-2 3v2c0 1.5-.5 2.5-2.5 2.5"/>'
+};
+const icon = (n, c) => `<svg class="ic${c ? ' ' + c : ''}" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${ICONS[n] || ''}</svg>`;
+const BRAND = '<svg class="brand-mark" viewBox="0 0 28 28" aria-hidden="true"><rect x="8" y="3" width="17" height="20" rx="3" fill="none" stroke="currentColor" stroke-width="1.8" opacity=".4"/><rect x="3" y="6.5" width="17" height="18.5" rx="3" style="fill:var(--panel)" stroke="currentColor" stroke-width="1.8"/><rect x="6.2" y="11" width="10.4" height="3.6" rx="1.2" style="fill:var(--hl)"/><path d="M6.6 19h7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+
+/* ================= Helpers ================= */
+const $ = (s, r) => (r || document).querySelector(s);
+const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+const clamp = (n, a, b) => Math.min(b, Math.max(a, n));
+const plural = (n, one, many) => `${Number(n).toLocaleString()} ${n === 1 ? one : (many || one + 's')}`;
+const cssId = s => (window.CSS && CSS.escape) ? CSS.escape(s) : String(s).replace(/["\\]/g, '\\$&');
+const validColor = c => typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c);
+const trunc = (s, n) => (s.length > n ? s.slice(0, n - 1).trimEnd() + '…' : s);
+const titleCmp = (a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base', numeric: true });
+function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+
+function rel(ts) {
+  if (!ts) return 'never';
+  const d = Date.now() - ts;
+  if (d < 60e3) return 'just now';
+  if (d < 3600e3) return `${Math.round(d / 60e3)} min ago`;
+  if (d < DAY) { const h = Math.round(d / 3600e3); return `${h} ${h === 1 ? 'hour' : 'hours'} ago`; }
+  if (d < 2 * DAY) return 'yesterday';
+  if (d < 30 * DAY) return `${Math.floor(d / DAY)} days ago`;
+  return fmtDate(ts);
+}
+function fmtDate(ts) {
+  const d = new Date(ts);
+  const sameYear = d.getFullYear() === new Date().getFullYear();
+  return d.toLocaleDateString(undefined, sameYear ? { month: 'short', day: 'numeric' } : { month: 'short', day: 'numeric', year: 'numeric' });
+}
+function stamp() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+
+/* ---------- Template fields ---------- */
+function parseVars(body) {
+  const map = new Map();
+  for (const m of String(body).matchAll(VAR_RE)) {
+    const name = m[1].trim();
+    if (!name) continue;
+    const def = m[2] != null ? m[2].trim() : '';
+    if (!map.has(name)) map.set(name, { name, def });
+    else if (!map.get(name).def && def) map.get(name).def = def;
+  }
+  return [...map.values()];
+}
+function fillText(body, values) {
+  const missing = new Set();
+  const text = String(body).replace(VAR_RE, (all, n, def) => {
+    const name = n.trim();
+    if (!name) return all;
+    const v = values[name];
+    if (v != null && v !== '') return v;
+    if (def != null && def.trim() !== '') return def.trim();
+    missing.add(name);
+    return all;
+  });
+  return { text, missing: [...missing] };
+}
+function filledHTML(body, values) {
+  body = String(body);
+  let out = '', last = 0;
+  for (const m of body.matchAll(VAR_RE)) {
+    const name = m[1].trim();
+    if (!name) continue;
+    out += esc(body.slice(last, m.index));
+    const v = values[name];
+    const def = m[2] != null ? m[2].trim() : '';
+    if (v) out += `<span class="filled">${esc(v)}</span>`;
+    else if (def) out += `<span class="filled is-default" title="Default value">${esc(def)}</span>`;
+    else out += `<span class="var">${esc(m[0])}</span>`;
+    last = m.index + m[0].length;
+  }
+  out += esc(body.slice(last));
+  return out || '<span class="muted">This prompt is empty. Switch to Edit to write it.</span>';
+}
+
+/* ---------- Search highlighting ---------- */
+let qRe = null;
+function buildQRe() {
+  const words = ui.q.trim().split(/\s+/).map(w => w.replace(/^#/, '')).filter(Boolean);
+  qRe = words.length ? new RegExp('(' + words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')', 'gi') : null;
+}
+function hl(text) {
+  text = String(text);
+  if (!qRe) return esc(text);
+  let out = '', last = 0;
+  text.replace(qRe, (m, _g, idx) => { out += esc(text.slice(last, idx)) + '<mark>' + esc(m) + '</mark>'; last = idx + m.length; return m; });
+  return out + esc(text.slice(last));
+}
+function rich(body) {
+  body = String(body).slice(0, 900);
+  let out = '', last = 0;
+  for (const m of body.matchAll(VAR_RE)) {
+    if (!m[1].trim()) continue;
+    out += hl(body.slice(last, m.index)) + `<span class="var">${hl(m[0])}</span>`;
+    last = m.index + m[0].length;
+  }
+  return out + hl(body.slice(last));
+}
+
+/* ================= State ================= */
+function normTags(t) {
+  const arr = Array.isArray(t) ? t : (typeof t === 'string' ? t.split(/[,;]/) : []);
+  const out = [];
+  for (const x of arr) {
+    const v = String(x).trim().toLowerCase().replace(/^#+/, '').replace(/\s+/g, '-').slice(0, 40);
+    if (v && !out.includes(v)) out.push(v);
+  }
+  return out.slice(0, 30);
+}
+function normPrompt(p, i) {
+  const t = Date.now();
+  p = p || {};
+  const vv = {};
+  if (p.varValues && typeof p.varValues === 'object' && !Array.isArray(p.varValues)) {
+    for (const [k, v] of Object.entries(p.varValues)) if (typeof v === 'string') vv[k] = v;
+  }
+  return {
+    id: String(p.id || uid()),
+    title: (String(p.title == null ? '' : p.title).trim().slice(0, 200)) || 'Untitled',
+    body: String(p.body == null ? '' : p.body),
+    categoryId: p.categoryId ? String(p.categoryId) : null,
+    tags: normTags(p.tags),
+    notes: String(p.notes == null ? '' : p.notes),
+    pinned: !!p.pinned,
+    rating: clamp(Math.round(+p.rating || 0), 0, 5),
+    uses: Math.max(0, Math.floor(+p.uses || 0)),
+    lastUsed: +p.lastUsed || null,
+    recent: Array.isArray(p.recent) ? p.recent.map(Number).filter(Number.isFinite).slice(-60) : [],
+    createdAt: +p.createdAt || t,
+    updatedAt: +p.updatedAt || +p.createdAt || t,
+    order: Number.isFinite(+p.order) && p.order !== null && p.order !== '' ? +p.order : (i || 0),
+    history: Array.isArray(p.history) ? p.history.filter(h => h && typeof h.body === 'string').slice(-10).map(h => ({ body: h.body, at: +h.at || t })) : [],
+    varValues: vv,
+    sample: !!p.sample,
+    pack: p.pack ? String(p.pack).slice(0, 40) : (p.sample ? 'starter' : null)
+  };
+}
+function mergeSettings(s) {
+  s = (s && typeof s === 'object') ? s : {};
+  const out = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+  for (const k of Object.keys(ENUMS)) if (ENUMS[k].includes(s[k])) out[k] = s[k];
+  if (SORTS[s.sort]) out.sort = s.sort;
+  if (Number.isFinite(+s.previewLines)) out.previewLines = clamp(Math.round(+s.previewLines), 1, 12);
+  for (const k of ['pinnedFirst', 'countCopies', 'closeOnCopy', 'confirmDelete']) if (typeof s[k] === 'boolean') out[k] = s[k];
+  if (s.show && typeof s.show === 'object') for (const k of Object.keys(out.show)) if (typeof s.show[k] === 'boolean') out.show[k] = s.show[k];
+  return out;
+}
+function normalize(s) {
+  s = (s && typeof s === 'object') ? s : {};
+  const out = { version: 1, updatedAt: +s.updatedAt || 0, seeded: !!s.seeded, packs: Array.isArray(s.packs) ? s.packs.filter(x => typeof x === 'string').slice(0, 50) : [], settings: mergeSettings(s.settings), categories: [], prompts: [] };
+  const seen = new Set();
+  (Array.isArray(s.categories) ? s.categories : []).forEach((c, i) => {
+    if (!c || typeof c !== 'object') return;
+    const id = String(c.id || uid());
+    if (seen.has(id)) return;
+    seen.add(id);
+    out.categories.push({ id, name: (String(c.name || '').trim().slice(0, 60)) || 'Untitled', color: validColor(c.color) ? c.color : PALETTE[i % PALETTE.length] });
+  });
+  const pseen = new Set();
+  (Array.isArray(s.prompts) ? s.prompts : []).forEach((p, i) => {
+    if (!p || typeof p !== 'object') return;
+    const n = normPrompt(p, i);
+    if (pseen.has(n.id)) n.id = uid();
+    pseen.add(n.id);
+    if (n.categoryId && !seen.has(n.categoryId)) n.categoryId = null;
+    out.prompts.push(n);
+  });
+  return out;
+}
+
+function starterPack() {
+  const t = Date.now();
+  const categories = [
+    { id: 'c-writing', name: 'Writing', color: '#E2553F' },
+    { id: 'c-code', name: 'Code', color: '#3B8FD9' },
+    { id: 'c-work', name: 'Work', color: '#3E9C6E' },
+    { id: 'c-research', name: 'Research', color: '#8B5CC7' },
+    { id: 'c-learning', name: 'Learning', color: '#E9A23B' }
+  ];
+  let order = 0;
+  const mk = (id, title, categoryId, tags, body, o) => {
+    o = o || {};
+    const uses = o.uses || 0, week = Math.min(o.week || 0, uses), recent = [];
+    for (let i = 0; i < Math.min(uses, 40); i++) recent.push(i < week ? t - (i + 1) * (7 * DAY / (week + 1)) : t - (9 + i * 2.5) * DAY);
+    recent.sort((a, b) => a - b);
+    return {
+      id, title, categoryId, tags, body, notes: o.notes || '', pinned: !!o.pinned, rating: o.rating || 0,
+      uses, lastUsed: recent.length ? recent[recent.length - 1] : null, recent,
+      createdAt: t - (o.age || 30) * DAY, updatedAt: t - (o.edited || Math.ceil((o.age || 30) / 3)) * DAY,
+      order: order++, sample: true, pack: 'starter'
+    };
+  };
+  const prompts = [
+    mk('s-tighten', 'Tighten this draft', 'c-writing', ['editing', 'clarity'],
+      'Edit the text below for clarity and concision. Keep my voice and meaning; cut filler, fix grammar, and prefer plain words over jargon.\n\nReturn the edited text first, then a short list of the three biggest changes you made and why.\n\nAudience: {{audience: general readers}}\n\nText:\n{{text}}',
+      { uses: 14, week: 4, pinned: true, rating: 5, age: 60, edited: 9, notes: 'Works best on a page or less. For longer pieces, run it one section at a time.' }),
+    mk('s-review', 'Senior code review', 'c-code', ['review', 'quality'],
+      'Review the following {{language: TypeScript}} code as a careful senior engineer. Look for, in order of priority: bugs, unhandled edge cases, security issues, performance traps, and unclear naming.\n\nFor each issue, quote the line, explain the risk in one sentence, and suggest a concrete fix. Finish with one thing the code does well.\n\n```\n{{code}}\n```',
+      { uses: 21, week: 6, pinned: true, rating: 5, age: 90, edited: 20 }),
+    mk('s-tests', 'Write the tests first', 'c-code', ['testing'],
+      'Write {{framework: pytest}} tests for the function below. Cover the happy path, boundary values, invalid input, and one property-based test if it fits. Don’t change the function itself; if it looks buggy, say so after the tests.\n\n{{function}}',
+      { uses: 6, week: 1, rating: 4, age: 40 }),
+    mk('s-meeting', 'Meeting notes to action items', 'c-work', ['meetings', 'summary'],
+      'Turn these meeting notes into three parts:\n1. A three-sentence summary.\n2. A list of the decisions made.\n3. A table of action items with owner, task, and due date.\n\nIf something is ambiguous, flag it instead of guessing.\n\nNotes:\n{{notes}}',
+      { uses: 17, week: 3, rating: 4, age: 75 }),
+    mk('s-reply', 'Warm but firm reply', 'c-work', ['email'],
+      'Draft a reply to the email below.\n\nWhat I want: {{goal}}\nTone: warm and direct, with no apologies I don’t owe.\nLength: under {{word limit: 120}} words, ending with one clear next step.\n\nEmail:\n{{email}}',
+      { uses: 11, week: 2, rating: 4, age: 50 }),
+    mk('s-steelman', 'Steelman both sides', 'c-research', ['thinking', 'debate'],
+      'Give me the strongest version of each side of this question: {{question}}\n\nFor each side, list its best evidence and the single assumption it depends on most. Then tell me which facts, if they turned out to be true, would settle it.',
+      { uses: 4, rating: 4, age: 25 }),
+    mk('s-field', 'Map a new field', 'c-research', ['research', 'reading'],
+      'I’m new to {{subject}}. Outline the main schools of thought, the open questions people argue about, and the kinds of sources I should read first. Say clearly where you’re unsure, and don’t invent citations.',
+      { uses: 3, week: 1, rating: 3, age: 20 }),
+    mk('s-explain', 'Explain it at my level', 'c-learning', ['explain'],
+      'Explain {{topic}} to someone with {{background: no technical background}}.\n\nStart with a one-paragraph intuition, then walk through one concrete example, then list the two or three things people most often get wrong. Keep it under {{length: 400}} words.',
+      { uses: 9, week: 2, rating: 5, age: 45 }),
+    mk('s-duck', 'Rubber duck', 'c-learning', ['thinking', 'debugging'],
+      'I’m going to describe a problem I’m stuck on. Don’t solve it yet. Ask me one question at a time to help me find the gap in my own reasoning, and only suggest an answer if I ask for one.',
+      { uses: 7, week: 2, pinned: true, rating: 5, age: 35 }),
+    mk('s-names', 'Name brainstorm', 'c-writing', ['brainstorm', 'naming'],
+      'Brainstorm 20 names for {{thing}}. They should feel {{vibe: friendly and modern}}.\n\nMix short coined words, real words, and two-word compounds. Mark your top three and give one sentence on why each works.',
+      { uses: 0, age: 3, edited: 3 }),
+    mk('s-regex', 'Regex with an explanation', 'c-code', ['regex'],
+      'Write a regular expression that matches {{what to match}}.\n\nExplain each part, give three strings that should match and three that shouldn’t, and note anything specific to {{flavor: JavaScript}} regex syntax.',
+      { uses: 2, rating: 3, age: 15 }),
+    mk('s-release', 'Release notes from a changelog', 'c-writing', ['product', 'changelog'],
+      'Rewrite these raw changes as release notes for {{audience: customers}}. Group them under New, Improved, and Fixed. Lead with the change people will care about most, skip internal refactors, and keep each line under 20 words.\n\nChanges:\n{{changes}}',
+      { uses: 5, rating: 3, age: 70 })
+  ];
+  return { categories, prompts };
+}
+
+function secdevPack() {
+  const t = Date.now();
+  const AUTH = 'For systems you own or have written permission to test.';
+  const categories = [
+    { id: 'c-build', name: 'Build', color: '#2A9D9A' },
+    { id: 'c-red', name: 'Red team', color: '#B83B5E' },
+    { id: 'c-blue', name: 'Blue team', color: '#5468D4' },
+    { id: 'c-audit', name: 'Audit & quality', color: '#8DA34A' },
+    { id: 'c-ai', name: 'AI security', color: '#D65A9A' }
+  ];
+  let n = 0;
+  const mk = (id, title, categoryId, tags, lines, notes) => {
+    const i = n++;
+    return {
+      id, title, categoryId, tags, body: lines.join('\n'), notes: notes || '',
+      pinned: false, rating: 0, uses: 0, lastUsed: null, recent: [],
+      createdAt: t - i * 1000, updatedAt: t - i * 1000, order: i, sample: true, pack: 'secdev-1'
+    };
+  };
+  const prompts = [
+    /* ---------- Build ---------- */
+    mk('sd-shell', 'Production-ready shell script', 'c-build', ['bash', 'scripting', 'automation'], [
+      'Write a {{shell: bash}} script that {{goal}}.',
+      'It must run on {{platform: Linux and macOS}} using only tools that ship with the base system, plus: {{extra tools allowed: nothing else}}.',
+      '',
+      'Requirements:',
+      '- Strict mode (`set -euo pipefail` or the equivalent) and a `-h/--help` usage message.',
+      '- Parse flags properly. Validate every input before changing anything, and fail with a clear message and a non-zero exit code.',
+      '- Quote every variable. Handle spaces, globs, leading dashes, and empty values in file names.',
+      '- Safe to re-run: check current state before acting, and support `--dry-run` to print what would happen.',
+      '- Clean up temp files with a trap, including on Ctrl-C.',
+      '- Logs and errors go to stderr with timestamps; stdout is only for real output, so it can be piped.',
+      '- No `eval`, no `curl | sh`, and no secrets in arguments or logs.',
+      '',
+      'Return the full script, then the edge cases it handles, three example invocations, and any assumptions you made.'
+    ], 'Run the result through shellcheck before trusting it.'),
+    mk('sd-pycli', 'Python CLI tool, standard library only', 'c-build', ['python', 'cli', 'tooling'], [
+      'Build a Python {{python version: 3.11+}} command-line tool that {{goal}}, using only the standard library.',
+      '',
+      'Structure:',
+      '- One file with `main(argv) -> int`, `argparse` (with subcommands if they help), and an `if __name__ == "__main__":` guard.',
+      '- Type hints throughout. Keep the logic in small pure functions and I/O at the edges so it’s easy to test.',
+      '- Exit codes: 0 for success, 1 for an expected failure, 2 for bad usage. Errors print one readable line to stderr; `--verbose` shows the traceback.',
+      '- Accept `-` as stdin for input paths, and offer `--json` for machine-readable output.',
+      '- Stream large inputs instead of loading them into memory.',
+      '',
+      'Then write a `unittest` file covering the core logic, bad input, and one end-to-end run through `main()`.',
+      '',
+      'After the code, explain any non-obvious design choice in one sentence each.'
+    ]),
+    mk('sd-spa', 'No-dependency single-file web app', 'c-build', ['html', 'spa', 'no-deps'], [
+      'Build {{app description}} as one self-contained HTML file with zero dependencies: no frameworks, CDNs, build step, external fonts, or remote images.',
+      '',
+      'Engineering:',
+      '- Vanilla JavaScript in strict mode. One state object, one render path, small named functions, and event delegation instead of inline handlers.',
+      '- Save state to localStorage under a versioned key, inside try/catch, with a migration path when the shape changes. Include JSON export and import.',
+      '- Treat all user text as untrusted: use textContent, or escape it before it reaches innerHTML. No eval or new Function.',
+      '- Works offline from file://.',
+      '',
+      'Experience:',
+      '- Responsive down to 360px wide.',
+      '- Fully keyboard accessible, with visible focus, real labels, and ARIA only where native elements fall short.',
+      '- Respects prefers-color-scheme and prefers-reduced-motion.',
+      '- Visual style: {{visual style: calm, legible, and dense enough for daily use}}.',
+      '',
+      'Deliver the complete file in one code block. Then list its features, keyboard shortcuts, and known limits.'
+    ]),
+    mk('sd-harness', 'Test harness for legacy code', 'c-build', ['testing', 'refactoring', 'harness'], [
+      'Build a test harness around the code below so I can change it safely.',
+      '',
+      'Language and test framework: {{test framework: pytest}}',
+      '',
+      '1. Write characterization tests that pin down what the code does today, odd behavior included. Don’t fix bugs yet; mark suspected bugs with a comment.',
+      '2. Put every external dependency (network, clock, filesystem, randomness, environment variables) behind a seam I can fake, and show the smallest code change that makes each seam possible.',
+      '3. Add table-driven cases for boundaries and invalid input, plus one property-based test for the core invariant if there is one.',
+      '4. Keep the suite deterministic and fast: no sleeps, no real network, fixed seeds.',
+      '',
+      'Finish with how to run it and the three changes it now makes safest.',
+      '',
+      'Code:',
+      '{{code}}'
+    ]),
+    mk('sd-fuzz', 'Fuzzing harness', 'c-build', ['fuzzing', 'testing', 'harness'], [
+      'Write a fuzzing harness for {{target: the function or parser to fuzz}} using {{fuzzer: libFuzzer (C/C++)}}.',
+      '',
+      '- Explain what the entry point receives and how to shape raw bytes into input this target will actually exercise.',
+      '- Seed corpus: describe 5–10 seed inputs and what each one covers. Add a dictionary of tokens if the format has keywords.',
+      '- Show the build flags with sanitizers (address and undefined behavior, plus memory where supported) and the exact command to run it.',
+      '- Avoid false positives: reset global state between runs, cap input size, and don’t leak memory.',
+      '- Explain how to minimize a crash, triage it, and turn it into a regression test.',
+      '',
+      'Target code or API:',
+      '{{code}}'
+    ], 'Use on code you maintain. Once a crash is fixed, keep its input as a regression test.'),
+    mk('sd-evals', 'Eval harness for prompts and models', 'c-build', ['evals', 'llm', 'harness'], [
+      'Design and build a small evaluation harness for {{what to evaluate: a prompt or model behavior}}.',
+      '',
+      'Language: {{language: Python, standard library plus the provider SDK}}',
+      '',
+      '1. Define “good” as 3–6 concrete, checkable criteria. For each, say whether code grades it (exact match, regex, JSON schema, unit test) or a model grades it with a rubric, and why.',
+      '2. Write a JSONL test-case format with input, expected properties, and tags. Draft 15 cases covering typical inputs, edge cases, and known failure modes.',
+      '3. Write the runner: load cases, call the model with retries and timeouts, grade each output, and write a results file plus a summary by criterion and tag.',
+      '4. Make runs comparable: fixed settings, a response cache keyed by input and config, and a diff mode that shows what changed between two runs.',
+      '',
+      'API keys come from environment variables only. End with two sentences on how to add a new case.'
+    ]),
+    mk('sd-spec', 'Spec first, then build', 'c-build', ['planning', 'requirements'], [
+      'Before writing any code for {{feature}}, write a short spec:',
+      '- The problem in two sentences, and who it’s for.',
+      '- Inputs, outputs, and error cases, as a table.',
+      '- Constraints: {{constraints: no new dependencies, fits the existing stack}}.',
+      '- What’s out of scope.',
+      '- Acceptance checks: a numbered list of observable behaviors that prove it works.',
+      '',
+      'If anything is ambiguous, ask me up to three questions and stop. Once I confirm, build it in small steps. After each step, say which acceptance checks now pass.'
+    ]),
+    mk('sd-parser', 'Parser for untrusted input', 'c-build', ['parsing', 'validation', 'security'], [
+      'Write a parser and validator in {{language}} for {{input format: our config file format}}.',
+      '',
+      'Treat every input as hostile:',
+      '- Enforce limits on total size, nesting depth, and item counts before doing expensive work.',
+      '- Reject unknown fields by default, with errors that name the field and its location (line and column when possible).',
+      '- Never execute, import, or evaluate anything from the input.',
+      '- Return either a fully typed, validated result or every error found, not just the first one.',
+      '',
+      'Include the schema as code, the parser, and tests for valid input, each class of invalid input, and each limit.'
+    ]),
+
+    /* ---------- Red team (authorized) ---------- */
+    mk('sd-roe', 'Pentest plan and rules of engagement', 'c-red', ['pentest', 'planning', 'owasp'], [
+      'Help me plan an authorized penetration test of {{scope: our customer-facing web app and its API}}.',
+      '',
+      'Draft:',
+      '1. Rules of engagement: in-scope and out-of-scope assets, testing windows, allowed techniques, data handling, stop conditions, and emergency contacts.',
+      '2. A test plan organized by the OWASP Web Security Testing Guide, prioritized for this target, saying what each test is meant to prove.',
+      '3. An evidence checklist so every finding is reproducible.',
+      '4. The approvals and paperwork to have in hand before testing starts.',
+      '',
+      'Flag anything in scope that could be risky to run against production.'
+    ], AUTH),
+    mk('sd-surface', 'Map our external attack surface', 'c-red', ['recon', 'asset-inventory'], [
+      'Help me map the external attack surface of an organization I’m responsible for securing.',
+      '',
+      'What I know: {{known assets: domains, cloud accounts, IP ranges, main SaaS vendors}}',
+      '',
+      '- List the asset types that most often get forgotten (old subdomains, staging environments, public storage buckets, CI systems, third-party SaaS holding our data) and how to inventory each from our own records and authorized tools.',
+      '- For each kind of exposed service, the questions to answer: who owns it, does it need to exist, is it patched, does it require authentication.',
+      '- A CSV inventory format and a routine to keep it current.',
+      '- How to prioritize what to fix first.'
+    ], AUTH),
+    mk('sd-purple', 'Purple-team detection exercise', 'c-red', ['purple-team', 'mitre-attack', 'detection'], [
+      'Plan a purple-team exercise that tests whether we detect {{technique: credential dumping from LSASS (ATT&CK T1003.001)}} in {{environment: Windows endpoints with EDR and a SIEM}}.',
+      '',
+      'For each procedure:',
+      '- What the red side runs, using a well-known, safe test such as an Atomic Red Team test ID rather than custom tooling.',
+      '- The telemetry it should produce and the detection we expect to fire.',
+      '- How the blue side confirms the alert, and what counts as detected, partly detected, or missed.',
+      '- Safety and cleanup steps.',
+      '',
+      'Finish with a results table template and how to turn each miss into a new detection.'
+    ], AUTH + ' Run it in a lab or with change approval.'),
+    mk('sd-finding', 'Write up a pentest finding', 'c-red', ['pentest', 'reporting'], [
+      'Turn my raw notes into a professional penetration test finding.',
+      '',
+      'Notes:',
+      '{{notes}}',
+      '',
+      'Format:',
+      '- Title, severity with a CVSS v3.1 vector and score, and affected assets.',
+      '- A three-sentence summary a non-technical reader can follow.',
+      '- Technical details and reproduction steps, using only my evidence.',
+      '- Business impact specific to this system.',
+      '- Remediation: the fix, a short-term mitigation, and how to verify the fix.',
+      '- References (CWE, OWASP).',
+      '',
+      'Don’t invent details. Mark anything missing as [needs evidence].'
+    ]),
+    mk('sd-ctf', 'CTF coach, hints only', 'c-red', ['ctf', 'learning'], [
+      'I’m working on a {{category: web}} challenge in a CTF or training lab where attacking the target is allowed. Coach me; don’t solve it for me.',
+      '',
+      'The challenge and what I’ve found so far:',
+      '{{notes}}',
+      '',
+      'Give one hint at a time, from gentle to strong, and wait for me after each: first where to look, then which class of vulnerability it suggests, then how to confirm it. After I solve it, explain the underlying flaw and how real systems prevent it.'
+    ]),
+
+    /* ---------- Blue team ---------- */
+    mk('sd-sigma', 'Sigma detection rule', 'c-blue', ['detection', 'sigma', 'siem'], [
+      'Write a Sigma rule that detects {{behavior: a local admin account created outside business hours}} in {{log source: Windows Security event logs}}.',
+      '',
+      '- Explain which events and fields signal this behavior, and which normal activity could look the same.',
+      '- Give the rule as valid Sigma YAML with title, id, status, description, references, logsource, detection, falsepositives, level, and ATT&CK tags.',
+      '- Translate it to {{query language: Splunk SPL}}.',
+      '- Give three test cases: one that should fire, a benign look-alike that shouldn’t, and an evasion variant it may miss, with how to close that gap.',
+      '- Suggest a tuning plan for the first two weeks in production.'
+    ]),
+    mk('sd-triage', 'Incident triage from logs', 'c-blue', ['incident-response', 'triage', 'logs'], [
+      'Help me triage a possible security incident. Be evidence-driven: separate what the logs show from what you infer, and say how confident you are.',
+      '',
+      'What alerted or what we noticed: {{trigger}}',
+      'Environment: {{environment: cloud provider, key systems, identity provider}}',
+      '',
+      'Logs:',
+      '{{logs}}',
+      '',
+      'Give me:',
+      '1. A UTC timeline of relevant events, each tied to its log line.',
+      '2. Indicators worth pivoting on (IPs, hosts, accounts, hashes, user agents) and where to look next for each.',
+      '3. Your best assessment of what happened, at least one benign explanation, and what evidence would confirm or rule out each.',
+      '4. Containment steps in priority order, noting any that could alert an attacker or destroy evidence.',
+      '5. What to preserve right now for forensics.'
+    ], 'Redact secrets and personal data before pasting logs.'),
+    mk('sd-runbook', 'Incident response runbook', 'c-blue', ['incident-response', 'runbook'], [
+      'Write an incident response runbook for {{incident type: a leaked cloud access key}}, for {{team: a three-person engineering team with no dedicated security staff}}.',
+      '',
+      'Sections: detection, the first 15 minutes, containment, eradication, recovery, and the post-incident review. For each step, give the owner role, the exact action or command template, and what to record.',
+      '',
+      'Include a short decision tree for escalating or involving legal, and a ready-to-send stakeholder update. Keep it scannable under pressure: short steps, no theory.'
+    ]),
+    mk('sd-stride', 'Threat model with STRIDE', 'c-blue', ['threat-modeling', 'stride', 'architecture'], [
+      'Threat-model {{system: the feature or service}} using STRIDE.',
+      '',
+      'What I know about it:',
+      '{{architecture: components, data flows, users, where it runs, what data it holds}}',
+      '',
+      '1. Draw the data flow as a text diagram and mark every trust boundary.',
+      '2. For each element and each flow that crosses a boundary, list plausible threats by STRIDE category. Skip categories that don’t apply instead of padding.',
+      '3. Rate each threat by likelihood and impact, with one sentence of reasoning.',
+      '4. For the top risks, give concrete mitigations, note which we may already have, and how to verify each one works.',
+      '5. List the assumptions I should confirm and the questions a security reviewer would ask.'
+    ]),
+    mk('sd-harden', 'Harden a configuration', 'c-blue', ['hardening', 'config', 'cis'], [
+      'Review this {{system: nginx}} configuration for security problems.',
+      '',
+      'For each finding:',
+      '- Severity (critical, high, medium, low) and a one-line reason tied to real impact.',
+      '- The exact line or setting.',
+      '- A corrected version, ready to paste.',
+      '- What the fix could break, and how to test it before rollout.',
+      '',
+      'Then list hardening steps beyond the findings, mapped to {{benchmark: the relevant CIS Benchmark}} where it applies. Only recommend changes you can justify from this config.',
+      '',
+      'Config:',
+      '{{config}}'
+    ], 'Works for Linux hosts, web servers, Dockerfiles, and Kubernetes manifests. Change the system field to match.'),
+    mk('sd-logscan', 'Log scanner for suspicious activity', 'c-blue', ['detection', 'python', 'tooling'], [
+      'Build a {{language: Python}} standard-library tool that scans {{log type: SSH auth logs}} and flags suspicious activity.',
+      '',
+      'Start with these detections: {{detections: brute-force bursts, success after many failures, logins at unusual hours, first-seen source addresses per account}}',
+      '',
+      '- A streaming parser that tolerates malformed lines: count and report them, never crash.',
+      '- Each detection is a small, separately tested function, with every threshold in one config block.',
+      '- Output readable findings plus JSON Lines for a SIEM, each with severity, evidence lines, and a one-sentence explanation.',
+      '- Unit tests with synthetic logs for each detection, including a near miss that should not fire.'
+    ]),
+    mk('sd-yara', 'YARA rule from indicators', 'c-blue', ['yara', 'malware-analysis', 'detection'], [
+      'Help me write a YARA rule that identifies {{target: the malware family or file type}} from these observations:',
+      '{{indicators: strings, byte patterns, PE characteristics, file sizes}}',
+      '',
+      '- Explain which indicators are distinctive and which are likely to cause false positives.',
+      '- Write the rule with meta (author, description, date, reference), strings, and a condition that balances precision and recall.',
+      '- Explain how to test it against a known-clean corpus, and what false-positive rate should make me revise it.'
+    ]),
+    mk('sd-auditlog', 'Security audit logging design', 'c-blue', ['logging', 'audit-trail', 'detection'], [
+      'Design security audit logging for {{system}}.',
+      '',
+      '- Which events must be logged (authentication, permission changes, sensitive data access, admin actions, config changes) and what must never be logged (secrets, raw tokens, full card numbers, personal data beyond what’s needed).',
+      '- A structured JSON schema with field names, types, and an example for each event type.',
+      '- Tamper resistance, retention, and access control for the logs themselves.',
+      '- Five alerts this logging makes possible.',
+      '- How to test that logging works and keeps working after future changes.'
+    ]),
+    mk('sd-tls', 'TLS certificate checker', 'c-blue', ['tls', 'monitoring', 'python'], [
+      'Write a {{language: Python}} standard-library script that checks TLS certificates for a list of hostnames I own.',
+      '',
+      'For each host, report: expiry date and days left, issuer, subject alternative names, negotiated TLS version, whether the chain validates, and whether the hostname matches.',
+      '',
+      '- Read hosts from a file, one per line, with optional ports.',
+      '- Check hosts concurrently with a timeout, and never disable verification silently.',
+      '- Output a table sorted by days left, plus JSON.',
+      '- Exit non-zero if any certificate expires within {{warning days: 21}} days or fails validation, so it can run from cron or CI.'
+    ]),
+
+    /* ---------- Audit & quality ---------- */
+    mk('sd-appsec', 'Application security code review', 'c-audit', ['appsec', 'code-review', 'owasp'], [
+      'Review the code below as an application security engineer.',
+      '',
+      'Stack: {{stack}}',
+      'It handles: {{sensitive areas: user input, authentication, payments, file uploads}}',
+      '',
+      'Check for injection (SQL, command, template, path traversal), authentication and session flaws, broken access control, SSRF, unsafe deserialization, hardcoded secrets, weak cryptography, race conditions, and missing input limits.',
+      '',
+      'For each finding: CWE ID, severity, the vulnerable lines, how it could be abused in one or two sentences, and a fixed version. Skip style issues. If something is only safe because of an assumption about the caller, say so. End with the three fixes to make first.',
+      '',
+      'Code:',
+      '{{code}}'
+    ], 'Pairs well with Senior code review, which focuses on general bugs.'),
+    mk('sd-gate', 'Pre-merge review gate', 'c-audit', ['code-review', 'quality'], [
+      'Review this diff as a strict but fair reviewer before it merges.',
+      '',
+      'What it’s meant to do: {{intent}}',
+      '',
+      'Check, in this order:',
+      '1. Correctness: does it do what it claims? Look at off-by-one errors, null and empty cases, error paths, and concurrency.',
+      '2. Security: input validation, authorization on every new path, secrets, and sensitive data in logs.',
+      '3. Tests: do they cover the change, including failures? Name the missing test.',
+      '4. Operability: logging, metrics, timeouts, retries, and how we’d roll it back.',
+      '5. Maintainability: naming, duplication, and anything a new teammate would trip on.',
+      '',
+      'Label each issue blocking, should-fix, or nit, and quote the line. End with a verdict and the smallest set of changes needed to approve.',
+      '',
+      'Diff:',
+      '{{diff}}'
+    ]),
+    mk('sd-deps', 'Dependency and supply-chain audit', 'c-audit', ['supply-chain', 'dependencies'], [
+      'Audit the dependencies in this {{manifest type: package.json}} for security and maintenance risk.',
+      '',
+      'For each dependency, as far as you can tell from the name and version:',
+      '- Is it pinned, or is the version range dangerously wide?',
+      '- Risk signals: likely abandoned, a typosquat-looking name, install scripts, or more access than its job needs.',
+      '- Keep it, or replace it with the standard library or something we already use?',
+      '',
+      'Then give the commands to run a real vulnerability scan for this ecosystem, a lockfile and pinning policy, and settings for automated update pull requests. You can’t see live vulnerability data, so don’t guess CVE numbers.',
+      '',
+      'Manifest:',
+      '{{manifest}}'
+    ]),
+    mk('sd-secrets', 'Secret scanner for a repository', 'c-audit', ['secrets', 'ci', 'tooling'], [
+      'Write a {{language: Python}} standard-library script that scans a repository for committed secrets.',
+      '',
+      '- Detect common credential formats (cloud provider keys, private key headers, API tokens, database connection strings) with named patterns, plus a high-entropy string check with a tunable threshold.',
+      '- Skip binary files, vendored folders, and paths in an ignore file. Support an inline allow comment for known false positives.',
+      '- Optionally scan the full git history.',
+      '- Mask secrets in output, show file and line, and exit non-zero on any finding so it works as a pre-commit hook and in CI.',
+      '- Tests that use fake secrets shaped like real ones.',
+      '',
+      'Then tell me what to do if it finds a real secret, in order: revoke and rotate first, then clean history.'
+    ]),
+    mk('sd-headers', 'Security headers audit tool', 'c-audit', ['web-security', 'headers', 'no-deps'], [
+      'Build a no-dependency, single-file HTML tool that audits HTTP response headers I paste in, copied from the browser’s network tab or `curl -I` against a site I run.',
+      '',
+      '- Parse raw headers, then grade Content-Security-Policy, Strict-Transport-Security, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, the cross-origin isolation headers, and Set-Cookie flags (Secure, HttpOnly, SameSite).',
+      '- For CSP, break down each directive and flag unsafe-inline, unsafe-eval, wildcards, and a missing object-src, base-uri, or frame-ancestors.',
+      '- Show each issue with why it matters and a recommended value, plus an overall grade.',
+      '- Everything I paste is untrusted: render it with textContent, never as HTML.'
+    ]),
+    mk('sd-maint', 'Maintainability audit', 'c-audit', ['quality', 'refactoring', 'tech-debt'], [
+      'Audit this module for quality and long-term maintainability, ranked by payoff.',
+      '',
+      'Look at complexity hot spots, error handling, hidden coupling and global state, dead code, duplicated logic, naming, untested risky paths, and performance traps.',
+      '',
+      'Give me:',
+      '- A one-paragraph overall assessment.',
+      '- A ranked table: issue, location, why it matters, effort (S, M, L), and payoff.',
+      '- A refactoring plan in safe steps, each shippable on its own, with the tests that prove behavior didn’t change.',
+      '',
+      'Code:',
+      '{{code}}'
+    ]),
+    mk('sd-iam', 'Cloud IAM least-privilege review', 'c-audit', ['iam', 'cloud', 'least-privilege'], [
+      'Review this {{cloud: AWS}} IAM policy for least privilege.',
+      '',
+      'What it should allow: {{intended use}}',
+      '',
+      'Policy:',
+      '{{policy}}',
+      '',
+      '- Explain in plain words what the policy actually allows, including surprises from wildcards, NotAction, or missing conditions.',
+      '- Flag privilege-escalation paths, such as passing roles, editing its own policies, or creating access keys.',
+      '- Write a tightened policy scoped to the intended use, with conditions where they help.',
+      '- Explain how to verify it with the provider’s policy simulator or access analyzer before rollout.'
+    ]),
+    /* ---------- Volume 2: Build ---------- */
+    mk('sd2-node', 'Node.js CLI with zero dependencies', 'c-build', ['node', 'cli', 'no-deps'], [
+      'Build a Node.js {{node version: 20+}} command-line tool that {{goal}}, with zero npm dependencies.',
+      '',
+      '- Use only built-in modules: `node:util` parseArgs for flags, `node:fs/promises`, `node:path`, `node:readline` for streaming input, and `node:test` with `node:assert` for tests.',
+      '- ES modules, a minimal package.json with `"type": "module"` and a `bin` entry, and a shebang line.',
+      '- Validate inputs. Exit with 0 for success, 1 for expected failures, 2 for bad usage. Print errors as one line on stderr, with `--debug` for stack traces.',
+      '- Handle SIGINT cleanly, stream big files instead of reading them whole, and support `--json` output.',
+      '- Never build shell commands from input. If you must start a process, use `execFile` with an argument array.',
+      '',
+      'Deliver package.json, the CLI file, and a test file, then the commands to run and link it locally.'
+    ]),
+    mk('sd2-go', 'Go tool, standard library only', 'c-build', ['go', 'cli', 'tooling'], [
+      'Write a Go {{go version: 1.22+}} command-line tool that {{goal}}, using only the standard library.',
+      '',
+      '- `flag`, or subcommands with their own FlagSets, a clear usage message, and exit codes that mean something.',
+      '- Pass `context.Context` through every call that can block, with timeouts on network and file operations.',
+      '- Wrap errors with `%w` and useful context. Never panic on bad input.',
+      '- If it works concurrently, bound it with a worker pool and keep it clean under `go test -race`.',
+      '- Table-driven tests with `testing`, plus one fuzz test (`go test -fuzz`) for the main parsing function.',
+      '',
+      'Then give the build commands for Linux, macOS, and Windows, including a static build with `CGO_ENABLED=0`.'
+    ]),
+    mk('sd2-pwsh', 'PowerShell script for Windows admins', 'c-build', ['powershell', 'windows', 'automation'], [
+      'Write a PowerShell {{powershell version: 7}} script that {{goal}} on {{targets: local Windows machines}}.',
+      '',
+      "- `Set-StrictMode -Version Latest` and `$ErrorActionPreference = 'Stop'`.",
+      '- An advanced function with `[CmdletBinding(SupportsShouldProcess)]`, so `-WhatIf` and `-Confirm` work for every change.',
+      '- Approved verbs, typed and validated parameters (`ValidateSet`, `ValidateScript`), and comment-based help with examples.',
+      '- Pass objects through the pipeline instead of formatted text, and log with `Write-Verbose` and `Write-Information`.',
+      '- Never store credentials in the script. Take a `PSCredential` or use the SecretManagement module.',
+      '',
+      'Include Pester tests that mock anything that changes the system, and a note on the execution policy and code signing needed to run it.'
+    ]),
+    mk('sd2-ext', 'Least-privilege browser extension', 'c-build', ['browser-extension', 'javascript', 'security'], [
+      'Build a Manifest V3 browser extension that {{goal}}, with no dependencies and the least privilege possible.',
+      '',
+      '- Request only the permissions it truly needs. Prefer `activeTab` and optional permissions over broad host access, and explain each permission in one line.',
+      '- No remote code: every script ships inside the extension. Keep the default content security policy.',
+      '- Treat page content and messages as untrusted. Validate every message between the content script, service worker, and popup, and check the sender.',
+      '- Never put page data into innerHTML; use textContent or DOM methods.',
+      '- Keep settings in `chrome.storage`, and never store secrets in plain text.',
+      '',
+      'Deliver every file with its path, then how to load it unpacked, how to test it, and what to check before publishing it to a store.'
+    ]),
+    mk('sd2-client', 'Resilient API client', 'c-build', ['api', 'reliability', 'http'], [
+      'Write an API client in {{language: TypeScript}} for {{api: the API and the endpoints we use}}.',
+      '',
+      '- Timeouts on every request. Retry only safe or idempotent requests, with exponential backoff and jitter, and respect `Retry-After` and rate-limit headers.',
+      '- Idempotency keys on writes that support them.',
+      '- Pagination handled for the caller, returned as an iterator or stream.',
+      '- Typed results, and typed errors that separate client mistakes, server failures, auth problems, and rate limits.',
+      '- Credentials come from configuration and never appear in logs, errors, or URLs.',
+      '',
+      'Include tests against a fake server covering timeouts, retries, 429s, 5xx errors, malformed responses, and pagination edge cases.'
+    ]),
+    mk('sd2-load', 'Load test plan and harness', 'c-build', ['performance', 'load-testing', 'harness'], [
+      'Write a load test for {{service: our API}}, which I own, using {{tool: k6}}.',
+      '',
+      '- Start from goals: target throughput, latency budgets (p50, p95, p99), and an acceptable error rate. Here’s what I know so far, and ask me for anything missing: {{targets}}',
+      '- Model realistic traffic: weighted endpoints, think time, and test data that won’t collide or pollute production.',
+      '- Profiles: a smoke test, a ramp to target, a sustained soak, and a stress test that finds the breaking point.',
+      '- Thresholds that fail the run automatically, and output I can compare between runs.',
+      '- Explain coordinated omission and how this setup avoids it.',
+      '',
+      'Finish with what to watch on the server while it runs and how to read the results.'
+    ], 'Only point load tests at services you own, and warn whoever is on call first.'),
+    mk('sd2-migrate', 'Safe data migration script', 'c-build', ['database', 'migration', 'reliability'], [
+      'Write a data migration for {{database: PostgreSQL}} that {{change: describe the change}}.',
+      '',
+      '- Work in batches with a configurable size and pause, so it never holds long locks or floods replication.',
+      '- Idempotent and resumable: record progress in a checkpoint and skip finished work on rerun.',
+      '- A dry-run mode that reports exactly what would change.',
+      '- Verify after each batch and at the end, using counts, checksums, or sampled comparisons between old and new.',
+      '- A rollback plan, and the point after which rollback is no longer possible.',
+      '',
+      'Include a rollout checklist: backups confirmed, a run on a staging copy first, what to monitor, and who to notify.'
+    ]),
+
+    /* ---------- Volume 2: Red team ---------- */
+    mk('sd2-feature', 'Security test cases for one feature', 'c-red', ['pentest', 'test-cases', 'owasp'], [
+      'Write security test cases for {{feature: our password reset flow}} in an application I’m authorized to test.',
+      '',
+      'For each case:',
+      '- What it checks and the weakness it targets, with the CWE or OWASP category.',
+      '- Preconditions, such as test accounts and roles.',
+      '- Steps, at the level of what to send and what to observe.',
+      '- The secure, expected behavior, and what a failure looks like.',
+      '- Evidence to capture.',
+      '',
+      'Cover authentication bypass, account enumeration, token strength and expiry, rate limiting, access between accounts, input handling, and business logic abuse. Mark which cases could run automatically in CI.'
+    ], AUTH),
+    mk('sd2-authz', 'Access control test matrix', 'c-red', ['authorization', 'api', 'testing'], [
+      'Build an access control test matrix for {{application: our API}}.',
+      '',
+      'Roles: {{roles: anonymous, member, team admin, org admin}}',
+      'Endpoints and actions:',
+      '{{endpoints}}',
+      '',
+      '1. A matrix of role by endpoint and action, with the expected result in each cell: allowed, denied, or allowed only on their own resources.',
+      '2. Test cases for horizontal access (one user reaching another user’s objects by changing IDs) and vertical access (lower roles reaching admin actions).',
+      '3. An automated test script in {{language: Python with requests}} that signs in as each test account, checks every cell, and fails loudly on any mismatch.',
+      '4. The cells most likely to be wrong, based on common mistakes.'
+    ], AUTH + ' Use dedicated test accounts, never real customer data.'),
+    mk('sd2-phish', 'Phishing awareness program', 'c-red', ['phishing', 'awareness', 'training'], [
+      'Plan a phishing awareness simulation program for {{organization: our 200-person company}}.',
+      '',
+      '- Approvals and ground rules: sign-off from leadership, HR, and legal; who is excluded; and how we protect employee trust.',
+      '- Difficulty tiers from obvious to realistic, described as themes and the cues each one teaches, not ready-to-send lures.',
+      '- What happens on a click: an immediate, friendly training page. Never collect real passwords.',
+      '- Metrics that matter: report rate and time to report, not just click rate, and how to share results without shaming anyone.',
+      '- A quarterly schedule, and how to tie lessons back to real attacks we’ve seen.'
+    ], 'Run only with leadership, HR, and legal approval in place.'),
+    mk('sd2-cloud', 'Assumed-breach cloud review', 'c-red', ['cloud', 'iam', 'assumed-breach'], [
+      'Plan an assumed-breach review of our {{cloud: AWS}} environment, which I’m responsible for.',
+      '',
+      'Starting point: an attacker has {{foothold: read-only credentials for one developer role}}.',
+      '',
+      '- The paths from that foothold to sensitive data or admin access to look for (role chaining, passable roles, overly broad resource policies, exposed secrets, instance metadata), and why each matters.',
+      '- How to find them with read-only, open-source tools such as Prowler, ScoutSuite, or PMapper, and the provider’s own access analyzer.',
+      '- A way to rank the paths by impact and ease.',
+      '- The fix for each kind of path, and how to confirm it’s closed.'
+    ], AUTH),
+
+    /* ---------- Volume 2: Blue team ---------- */
+    mk('sd2-tabletop', 'Tabletop exercise', 'c-blue', ['incident-response', 'tabletop', 'training'], [
+      'Design a 60-minute tabletop exercise for {{audience: our engineering leads and support managers}} on {{scenario: ransomware hitting a file server}}.',
+      '',
+      '- Objectives: the three to five decisions or gaps this exercise should test.',
+      '- The scenario told in four or five injects, each with new information, a timestamp, and the questions to ask the room.',
+      '- Facilitator notes for each inject: what good answers sound like and where teams usually stall.',
+      '- Roles to assign, including a note-taker.',
+      '- A debrief template that turns gaps into owned action items with dates.'
+    ]),
+    mk('sd2-hunt', 'Threat hunt plan and queries', 'c-blue', ['threat-hunting', 'detection', 'siem'], [
+      'Build a hypothesis-driven threat hunt for {{technique: persistence through scheduled tasks (ATT&CK T1053.005)}}.',
+      '',
+      'Data we have: {{data sources: EDR process events, Windows event logs, and a SIEM}}',
+      'Query language: {{query language: KQL}}',
+      '',
+      '- State the hypothesis and what evidence would support or refute it.',
+      '- Write the hunting queries, broad first and then narrower, with comments.',
+      '- How to baseline normal activity in our environment and filter it out.',
+      '- How to triage results: what makes one suspicious, benign, or worth escalating.',
+      '- What to turn into a standing detection afterward.'
+    ]),
+    mk('sd2-phishtriage', 'Triage a reported phishing email', 'c-blue', ['phishing', 'email', 'triage'], [
+      'Help me triage a reported phishing email. Don’t visit links or open attachments; analyze them as text only.',
+      '',
+      'Raw headers and body:',
+      '{{email}}',
+      '',
+      '1. Header analysis: SPF, DKIM, and DMARC results, the Received chain, mismatches between From, Reply-To, and Return-Path, and signs of spoofing.',
+      '2. Links and attachments: list and defang them, and note what looks suspicious, without fetching anything.',
+      '3. A verdict (malicious, suspicious, spam, or legitimate) with confidence and reasoning.',
+      '4. Response steps: who else received it, how to find and remove it from mailboxes, what to block, and whether anyone who clicked needs a password reset.',
+      '5. A short, kind reply to the person who reported it.'
+    ]),
+    mk('sd2-dmarc', 'SPF, DKIM, and DMARC rollout', 'c-blue', ['email', 'dns', 'dmarc'], [
+      'Plan an SPF, DKIM, and DMARC rollout for {{domain: example.com}}, which sends mail through {{senders: Google Workspace and a marketing platform}}.',
+      '',
+      '- The exact DNS records to publish for each sender, and how to stay under SPF’s 10-lookup limit.',
+      '- A staged DMARC policy: p=none with reporting, then quarantine, then reject, with what to check before each step.',
+      '- How to read aggregate reports and find senders we forgot.',
+      '- Records for domains that never send mail, so they can’t be spoofed.',
+      '- Common mistakes that break legitimate mail.'
+    ]),
+    mk('sd2-backup', 'Ransomware-resilient backup review', 'c-blue', ['backup', 'ransomware', 'resilience'], [
+      'Review our backup setup for resilience against ransomware.',
+      '',
+      'What we have: {{setup: what is backed up, where, how often, and who has access}}',
+      'Recovery goals: {{recovery goals: RPO and RTO for each system}}',
+      '',
+      '- Check it against 3-2-1-1-0: three copies, two kinds of media, one offsite, one immutable or offline, and zero errors in restore tests.',
+      '- Could an attacker with domain admin or cloud admin delete or encrypt the backups? Look at credentials, separate accounts, immutability, and deletion protection.',
+      '- A restore-testing schedule that proves the recovery goals are actually met.',
+      '- The gaps ranked by risk, with the fix for each.'
+    ]),
+    mk('sd2-k8s', 'Kubernetes security baseline', 'c-blue', ['kubernetes', 'hardening', 'containers'], [
+      'Create a security baseline for {{cluster: our Kubernetes cluster and its workloads}}.',
+      '',
+      'Cover these, with ready-to-apply manifests or settings where possible:',
+      '- Pod Security Standards (restricted by default) and securityContext: non-root, read-only root filesystem, dropped capabilities, no privilege escalation, seccomp.',
+      '- RBAC: least-privilege roles, no wildcard verbs, and service accounts that don’t mount tokens they don’t need.',
+      '- Default-deny network policies, then allow rules per service.',
+      '- Secrets handling and encryption at rest.',
+      '- Image provenance: pinned digests, scanning in CI, and an admission policy that blocks unsigned or unscanned images.',
+      '- Audit logging and the alerts worth having.',
+      '',
+      'Order the work so the cluster stays up while you tighten it.'
+    ]),
+    mk('sd2-ioc', 'Scope and enrich indicators', 'c-blue', ['ioc', 'threat-intel', 'incident-response'], [
+      'I have these indicators from {{source: a vendor report on an active campaign}}:',
+      '{{indicators}}',
+      '',
+      '- Sort them by type and by how long they stay useful: hashes and IPs change quickly, behaviors last longer.',
+      '- For each type, the search to run across {{data sources: EDR, DNS logs, proxy logs, and email}} to find any sign of them in our environment, and how far back to look.',
+      '- What to block now, what to only alert on, and when each block should expire.',
+      '- What a hit would mean, and the first response steps if we find one.',
+      '- The behaviors behind these indicators that deserve a lasting detection.'
+    ]),
+
+    /* ---------- Volume 2: Audit & quality ---------- */
+    mk('sd2-vulnprio', 'Prioritize a vulnerability backlog', 'c-audit', ['vulnerability-management', 'prioritization'], [
+      'Help me prioritize this vulnerability backlog:',
+      '{{findings: a scanner export, or a list of CVEs, assets, and severities}}',
+      '',
+      'Context: {{context: which assets face the internet, which hold sensitive data, and any compensating controls}}',
+      '',
+      '- Rank by real risk, not CVSS alone: combine severity, known exploitation (the CISA KEV catalog), likelihood of exploitation (EPSS), exposure, and asset importance. Explain the scoring so I can repeat it.',
+      '- Group fixes that share one action, like a single package upgrade or a base image rebuild.',
+      '- Suggest SLA tiers and what to fix this week.',
+      '- Say what you can’t judge without live data instead of guessing.'
+    ]),
+    mk('sd2-debug', 'Debug it systematically', 'c-audit', ['debugging', 'quality'], [
+      'Help me find the root cause of this bug instead of guessing at fixes.',
+      '',
+      'What happens: {{symptom}}',
+      'What should happen: {{expected}}',
+      'What I’ve tried: {{tried: nothing yet}}',
+      'Relevant code, logs, or stack trace:',
+      '{{evidence}}',
+      '',
+      '1. Restate the problem precisely, separating what we know for sure from what we’re assuming.',
+      '2. Give the three most likely causes, ranked, with the evidence for and against each.',
+      '3. For each, the quickest experiment that would confirm or rule it out.',
+      '4. Once we find the cause, the fix and a regression test that fails before it and passes after.',
+      '',
+      'Ask for anything you need instead of assuming it.'
+    ]),
+    mk('sd2-ci', 'CI/CD pipeline security review', 'c-audit', ['ci-cd', 'supply-chain', 'github-actions'], [
+      'Review this {{ci system: GitHub Actions}} pipeline configuration for security risks.',
+      '',
+      '{{config}}',
+      '',
+      'Check for:',
+      '- Third-party actions or images that aren’t pinned to a full commit SHA or digest.',
+      '- Token permissions broader than each job needs, and secrets available to jobs that don’t use them.',
+      '- Risky triggers, such as pull_request_target or workflow_run checking out untrusted code, and script injection from issue titles, branch names, or PR descriptions.',
+      '- Long-lived cloud credentials that OIDC federation could replace.',
+      '- Missing branch protection, required reviews, or environment approvals for deploys.',
+      '- Build provenance: can we prove which commit produced an artifact?',
+      '',
+      'Give the fixed YAML for each issue. End with the three highest-risk fixes.'
+    ]),
+    mk('sd2-api', 'API review against the OWASP API Top 10', 'c-audit', ['api', 'owasp', 'appsec'], [
+      'Review this API against the OWASP API Security Top 10.',
+      '',
+      'Spec or route definitions:',
+      '{{spec}}',
+      '',
+      'Who calls it and how they authenticate: {{auth: browser clients with session cookies, plus partner API keys}}',
+      '',
+      '- Go through each Top 10 category and say whether this design looks exposed, safe, or unclear from what’s here.',
+      '- Look hard at object-level authorization on every route that takes an ID, mass assignment on write routes, and missing pagination or rate limits.',
+      '- For each real concern, the fix and a test that proves it.',
+      '- The questions I should answer to settle the unclear items.'
+    ]),
+    mk('sd2-a11y', 'Accessibility audit for a page', 'c-audit', ['accessibility', 'wcag', 'quality'], [
+      'Audit this page or component for accessibility against WCAG 2.2 AA.',
+      '',
+      '{{code}}',
+      '',
+      'Check semantics and landmarks, headings, labels and accessible names for every control, keyboard access and focus order, visible focus, color contrast, motion, error messages, and what a screen reader would announce.',
+      '',
+      'For each issue: the WCAG success criterion, who it affects, the exact element, and corrected code. Then give a short manual test script I can run with only a keyboard and a screen reader.'
+    ]),
+    mk('sd2-privacy', 'Privacy and data handling review', 'c-audit', ['privacy', 'data-protection', 'pii'], [
+      'Review how {{system}} handles personal data.',
+      '',
+      'What it collects and why: {{data: fields, sources, and purposes}}',
+      '',
+      '- Build a data inventory: each field, why we need it, where it’s stored, who can access it, and how long we keep it.',
+      '- Flag data we could stop collecting, keep for less time, or store less precisely.',
+      '- Find leaks: personal data in logs, analytics, error trackers, URLs, backups, or third-party tools.',
+      '- Check that deletion and export requests can be fulfilled everywhere the data lives.',
+      '- Note which rules likely apply, such as GDPR or CCPA, without drawing legal conclusions, and what to ask counsel.'
+    ]),
+
+    /* ---------- Volume 2: AI security ---------- */
+    mk('sd2-llmthreat', 'Threat model an LLM feature', 'c-ai', ['llm', 'threat-modeling', 'owasp'], [
+      'Threat-model {{feature: our LLM-powered feature}} using the OWASP Top 10 for LLM Applications.',
+      '',
+      'How it works: {{design: what the model sees, which tools it can call, what data it retrieves, and where its output goes}}',
+      '',
+      '1. Map the trust boundaries. User input, retrieved documents, tool results, and model output are all untrusted.',
+      '2. Walk through prompt injection (direct and through retrieved content), sensitive information disclosure, improper output handling, excessive agency, system prompt leakage, data and model poisoning, and unbounded consumption.',
+      '3. For each risk that applies here, the concrete attack path in one or two sentences and its impact.',
+      '4. Mitigations ranked by value, separating design changes from filters, since filters alone don’t stop injection.',
+      '5. Tests that would show each mitigation working.'
+    ]),
+    mk('sd2-injtest', 'Prompt injection test suite for my app', 'c-ai', ['llm', 'prompt-injection', 'evals'], [
+      'Build a prompt injection test suite for {{app: my LLM application}}, which I own.',
+      '',
+      'What the app must never do: {{boundaries: reveal its system prompt, call tools the user didn’t ask for, or send data to outside URLs}}',
+      '',
+      '- Test categories: direct instructions from the user, instructions hidden in documents or web pages it reads, instructions inside tool outputs, encoding and formatting tricks, and multi-turn setups.',
+      '- For each category, describe several test inputs and the safe behavior expected. Keep them as fixtures for this app, not a general-purpose jailbreak list.',
+      '- A grader that checks responses for boundary violations in code wherever possible, using tool-call logs, canary strings, and outbound URLs.',
+      '- A pass-rate summary by category, so I can track it from release to release.'
+    ]),
+    mk('sd2-agent', 'Harden an AI agent’s tool use', 'c-ai', ['llm', 'agents', 'least-privilege'], [
+      'Review and harden how {{agent: our AI agent}} uses tools.',
+      '',
+      'Its tools and what each one can do:',
+      '{{tools}}',
+      '',
+      '- Apply least privilege: narrow scopes, read-only where possible, and separate credentials per tool.',
+      '- Require human confirmation for anything irreversible or costly, showing the exact action before it runs.',
+      '- Validate every tool argument against a schema and an allowlist, and treat tool outputs as untrusted input to the model.',
+      '- Close data exfiltration paths, such as arbitrary URLs, email, or file writes to shared locations.',
+      '- Add limits on steps, spend, and rate, plus an audit log of every call and its inputs.',
+      '',
+      'Give the changes as concrete code or config, ordered by how much risk each removes.'
+    ]),
+    mk('sd2-sysprompt', 'Stress-test a system prompt', 'c-ai', ['llm', 'prompting', 'quality'], [
+      'Review this system prompt for clarity and robustness before it ships.',
+      '',
+      '{{system prompt}}',
+      '',
+      '- Find ambiguous, conflicting, or unenforceable instructions, and rewrite each one.',
+      '- Flag anything that shouldn’t be in a prompt at all, like secrets, keys, or internal URLs, since prompts can leak.',
+      '- Check how it handles requests outside its scope, attempts to override it, and missing information.',
+      '- Write 12 test conversations covering normal use, edge cases, and override attempts, each with the behavior we want.',
+      '- Return the improved prompt in full, with a short changelog.'
+    ]),
+    mk('sd2-rag', 'Secure a RAG pipeline', 'c-ai', ['llm', 'rag', 'data-security'], [
+      'Review the security of our retrieval-augmented generation pipeline.',
+      '',
+      'How it works: {{pipeline: sources, ingestion, chunking, vector store, retrieval, and how results reach the model and the user}}',
+      '',
+      '- Access control: are document permissions enforced at retrieval time for the person asking, not just at ingestion?',
+      '- Poisoning and injection: how could a malicious document get indexed, and what happens when it’s retrieved? How do we sanitize and label untrusted content?',
+      '- Leakage: personal or secret data in the index, embeddings, logs, or answers.',
+      '- Provenance: can we show which sources produced an answer, and check that the citations support it?',
+      '- For each gap, the fix and a test that proves it.'
+    ])
+  ];
+  return { categories, prompts };
+}
+
+const PACKS = {
+  starter: { label: 'Starter prompts', about: 'Writing, code review, meetings, email, research, and learning.', build: starterPack },
+  'secdev-1': { label: 'Security and dev', about: 'Scripts and CLI tools in Bash, Python, Node, Go, and PowerShell, no-dependency web apps and extensions, test, fuzz, eval, and load harnesses, detection and threat hunting, incident response, authorized testing, AI security, and audits.', build: secdevPack }
+};
+// Each release is added once to every library, including libraries saved before it existed.
+const RELEASES = [
+  { id: 'secdev-1', pack: 'secdev-1', only: p => !p.id.startsWith('sd2-') },
+  { id: 'secdev-2', pack: 'secdev-1', only: p => p.id.startsWith('sd2-') }
+];
+function releaseData(r) {
+  const d = PACKS[r.pack].build();
+  if (r.only) {
+    d.prompts = d.prompts.filter(r.only);
+    const used = new Set(d.prompts.map(p => p.categoryId));
+    d.categories = d.categories.filter(c => used.has(c.id));
+  }
+  return d;
+}
+
+function seedState() {
+  const a = starterPack(), b = secdevPack();
+  const prompts = [...a.prompts, ...b.prompts.map((p, i) => ({ ...p, order: a.prompts.length + i }))];
+  return normalize({ version: 1, updatedAt: 0, seeded: true, packs: [...new Set([...Object.keys(PACKS), ...RELEASES.map(r => r.id)])], settings: DEFAULT_SETTINGS, categories: [...a.categories, ...b.categories], prompts });
+}
+
+const SORTS = {
+  uses:     { label: 'Most used',          dir: 'desc', cmp: (a, b) => a.uses - b.uses },
+  trending: { label: 'Most used this week', dir: 'desc', cmp: (a, b) => weekUses(a) - weekUses(b) },
+  lastUsed: { label: 'Recently used',      dir: 'desc', cmp: (a, b) => (a.lastUsed || 0) - (b.lastUsed || 0) },
+  updated:  { label: 'Recently edited',    dir: 'desc', cmp: (a, b) => a.updatedAt - b.updatedAt },
+  created:  { label: 'Date added',         dir: 'desc', cmp: (a, b) => a.createdAt - b.createdAt },
+  title:    { label: 'Title',              dir: 'asc',  cmp: titleCmp },
+  rating:   { label: 'Rating',             dir: 'desc', cmp: (a, b) => a.rating - b.rating },
+  category: { label: 'Category',           dir: 'asc',  cmp: (a, b, ci) => (ci.has(a.categoryId) ? ci.get(a.categoryId) : 1e6) - (ci.has(b.categoryId) ? ci.get(b.categoryId) : 1e6) },
+  custom:   { label: 'Your order',         dir: 'asc',  cmp: (a, b) => a.order - b.order }
+};
+
+let localOK = true;
+function load() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (raw) return normalize(JSON.parse(raw));
+  } catch (e) { /* fall through to samples */ }
+  return seedState();
+}
+function writeLocal() {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(state)); localOK = true; }
+  catch (e) { localOK = false; }
+}
+
+let state = load();
+const ui = {
+  scope: 'all', tags: new Set(), q: '', selectMode: false, selected: new Set(), visibleIds: [],
+  drawer: null, sidebarOpen: false, showAllTags: false, addingCat: false
+};
+const undoStack = [];
+
+/* Call after any change to the library. */
+function commit(opts) {
+  state.updatedAt = Date.now();
+  state.seeded = false;
+  writeLocal();
+  Sync.schedule();
+  if (!(opts && opts.silent)) render();
+}
+function snapshot(label) {
+  undoStack.push({ label, data: JSON.stringify({ prompts: state.prompts, categories: state.categories }) });
+  if (undoStack.length > 25) undoStack.shift();
+}
+function undo() {
+  const s = undoStack.pop();
+  if (!s) { toast('Nothing to undo.'); return; }
+  const d = JSON.parse(s.data);
+  state.prompts = d.prompts;
+  state.categories = d.categories;
+  commit();
+  refreshOpenViews();
+  toast(`Undid ${s.label}.`);
+}
+
+const getPrompt = id => state.prompts.find(p => p.id === id) || null;
+const catMap = () => new Map(state.categories.map(c => [c.id, c]));
+const isRecent = p => !!p.lastUsed && Date.now() - p.lastUsed < 30 * DAY;
+function weekUses(p) { const cut = Date.now() - 7 * DAY; let n = 0; for (const t of p.recent) if (t > cut) n++; return n; }
+const allTags = () => { const s = new Map(); state.prompts.forEach(p => p.tags.forEach(t => s.set(t, (s.get(t) || 0) + 1))); return [...s.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])); };
+const nextColor = () => { const used = new Set(state.categories.map(c => c.color.toLowerCase())); return PALETTE.find(c => !used.has(c.toLowerCase())) || PALETTE[state.categories.length % PALETTE.length]; };
+
+
+/* ================= Elements ================= */
+const app = $('#app'), sidebar = $('#sidebar'), cardsEl = $('#cards'), filterbar = $('#filterbar'), bulkbar = $('#bulkbar');
+const drawer = $('#drawer'), scrim = $('#scrim'), modalWrap = $('#modalWrap'), toasts = $('#toasts'), content = $('#content');
+const qInput = $('#q'), sortSel = $('#sortSel'), dirBtn = $('#dirBtn'), viewSeg = $('#viewSeg'), selectBtn = $('#selectBtn'), newBtn = $('#newBtn'), menuBtn = $('#menuBtn'), fileInput = $('#fileInput');
+const darkMQ = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : { matches: false, addEventListener() {} };
+const narrowMQ = window.matchMedia ? window.matchMedia('(max-width: 880px)') : { matches: false, addEventListener() {} };
+
+/* ================= Appearance ================= */
+const isDark = () => state.settings.theme === 'dark' || (state.settings.theme === 'auto' && darkMQ.matches);
+function applyAppearance() {
+  const s = state.settings, root = document.documentElement, dark = isDark();
+  if (s.theme === 'auto') root.removeAttribute('data-theme'); else root.setAttribute('data-theme', s.theme);
+  const a = ACCENTS[s.accent] || ACCENTS.ink, h = HILITES[s.hilite] || HILITES.yellow;
+  root.style.setProperty('--accent', dark ? a.dark : a.light);
+  root.style.setProperty('--accent-ink', dark ? '#151B22' : '#FFFFFF');
+  root.style.setProperty('--hl', dark ? h.dark : h.light);
+  root.style.setProperty('--fs', TEXT_SIZES[s.textSize] || '15px');
+  root.style.setProperty('--lines', String(s.previewLines));
+  root.setAttribute('data-density', s.density);
+}
+
+/* ================= Rendering ================= */
+function render() {
+  applyAppearance();
+  renderSidebar();
+  renderToolbar();
+  renderList();
+  renderBulk();
+}
+
+function captureFocus(root) {
+  const a = document.activeElement;
+  if (!a || !root.contains(a) || a === root) return null;
+  const card = a.closest('[data-id]');
+  return { id: card ? card.dataset.id : null, act: a.dataset.act || null, scope: a.dataset.scope || null, sact: a.dataset.sact || null, tag: a.dataset.tag || null, bact: a.dataset.bact || null, fact: a.dataset.fact || null };
+}
+function restoreFocus(root, k) {
+  if (!k) return;
+  let el = null;
+  if (k.id) {
+    const c = root.querySelector(`[data-id="${cssId(k.id)}"]`);
+    if (c) el = (k.act && c.querySelector(`[data-act="${k.act}"]`)) || c;
+  } else if (k.scope) el = root.querySelector(`[data-scope="${cssId(k.scope)}"]`);
+  else if (k.sact) el = root.querySelector(`[data-sact="${k.sact}"]`);
+  else if (k.tag) el = root.querySelector(`[data-tag="${cssId(k.tag)}"]`);
+  else if (k.bact) el = root.querySelector(`[data-bact="${k.bact}"]`);
+  else if (k.fact) el = root.querySelector(`[data-fact="${k.fact}"]`);
+  if (el) el.focus({ preventScroll: true });
+}
+
+function syncLabel() {
+  switch (Sync.state) {
+    case 'connecting': return 'Connecting to your account…';
+    case 'pending': case 'saving': return 'Saving to your account…';
+    case 'synced': return 'Saved to your account';
+    case 'offline': return 'Can’t reach your account yet. Changes are kept in this browser.';
+    case 'error': return Sync.detail === 'quota_exceeded' ? 'Account storage is full. Changes are kept in this browser.' : 'Account sync paused. Changes are kept in this browser.';
+    default: return localOK ? 'Saved in this browser' : 'This browser isn’t saving. Export a backup to keep your work.';
+  }
+}
+
+function renderSidebar() {
+  const k = captureFocus(sidebar);
+  const P = state.prompts;
+  const counts = { all: P.length, pinned: 0, recent: 0, unused: 0 };
+  const catCounts = new Map();
+  let uncat = 0, uses = 0;
+  for (const p of P) {
+    if (p.pinned) counts.pinned++;
+    if (isRecent(p)) counts.recent++;
+    if (!p.uses) counts.unused++;
+    if (p.categoryId) catCounts.set(p.categoryId, (catCounts.get(p.categoryId) || 0) + 1); else uncat++;
+    uses += p.uses;
+  }
+  const item = (scope, label, count, dot, drop) =>
+    `<button class="nav-item" data-scope="${esc(scope)}" aria-current="${ui.scope === scope}"${drop != null ? ` data-drop-cat="${esc(drop)}"` : ''}${dot ? ` style="--c:${dot}"` : ''}>${dot ? '<span class="dot"></span>' : ''}<span class="nav-label">${esc(label)}</span><span class="count">${count}</span></button>`;
+  const tags = allTags();
+  const LIMIT = 16;
+  const shownTags = ui.showAllTags ? tags : tags.slice(0, LIMIT);
+  sidebar.innerHTML = `
+    <div class="brand">${BRAND}<h1>Prompt library</h1><button class="icon-btn sm close-side" data-sact="close-side" aria-label="Close menu">${icon('x')}</button></div>
+    <nav class="nav" aria-label="Views">
+      ${item('all', SCOPE_LABELS.all, counts.all)}
+      ${item('pinned', SCOPE_LABELS.pinned, counts.pinned)}
+      ${item('recent', SCOPE_LABELS.recent, counts.recent)}
+      ${item('unused', SCOPE_LABELS.unused, counts.unused)}
+    </nav>
+    <section aria-labelledby="catHead">
+      <div class="side-head"><h2 id="catHead">Categories</h2>
+        <button class="icon-btn sm" data-sact="add-cat" aria-label="Add a category" title="Add a category">${icon('plus')}</button>
+        <button class="icon-btn sm" data-sact="manage-cats" aria-label="Edit categories" title="Rename, recolor, and reorder">${icon('edit')}</button>
+      </div>
+      <div class="nav">
+        ${state.categories.map(c => item('cat:' + c.id, c.name, catCounts.get(c.id) || 0, c.color, c.id)).join('')}
+        ${uncat && state.categories.length ? item('uncat', SCOPE_LABELS.uncat, uncat, 'var(--line-strong)', '') : ''}
+        ${ui.addingCat ? `<div class="add-cat"><input type="text" id="addCatInput" maxlength="60" placeholder="Category name, then Enter" aria-label="New category name" autocomplete="off"></div>` : ''}
+      </div>
+      ${!state.categories.length && !ui.addingCat ? `<p class="side-empty">Group prompts by project, task, or model. <button class="link" data-sact="add-cat">Add a category</button></p>` : ''}
+    </section>
+    <section aria-labelledby="tagHead">
+      <div class="side-head"><h2 id="tagHead">Tags</h2></div>
+      ${tags.length ? `<div class="tag-cloud">${shownTags.map(([t, n]) => `<button class="tag${ui.tags.has(t) ? ' on' : ''}" data-tag="${esc(t)}" aria-pressed="${ui.tags.has(t)}">#${esc(t)}<span class="tag-n">${n}</span></button>`).join('')}</div>
+        ${tags.length > LIMIT ? `<button class="link more-tags" data-sact="more-tags">${ui.showAllTags ? 'Show fewer' : 'Show all ' + tags.length}</button>` : ''}`
+      : '<p class="side-empty">Tags you add to prompts show up here, so you can filter by them.</p>'}
+    </section>
+    <footer class="side-foot">
+      <p class="stats">${plural(P.length, 'prompt')}, ${plural(uses, 'use')}</p>
+      <p class="sync" data-state="${Sync.state === 'local' && !localOK ? 'blocked' : Sync.state}"><span class="sync-dot"></span><span class="sync-text">${esc(syncLabel())}</span></p>
+      <div class="side-actions">
+        <button class="btn ghost sm" data-sact="settings">${icon('sliders')}Settings</button>
+        <button class="btn ghost sm" data-sact="shortcuts">${icon('keyboard')}Shortcuts</button>
+      </div>
+    </footer>`;
+  restoreFocus(sidebar, k);
+  if (ui.addingCat) { const inp = $('#addCatInput'); if (inp) inp.focus(); }
+}
+
+function renderToolbar() {
+  const s = state.settings;
+  if (sortSel.value !== s.sort) sortSel.value = s.sort;
+  const custom = s.sort === 'custom';
+  dirBtn.disabled = custom;
+  const asc = s.sortDir === 'asc';
+  dirBtn.innerHTML = icon(asc ? 'asc' : 'desc');
+  dirBtn.title = custom ? 'Your order has one direction; drag cards to change it' : (asc ? 'Ascending. Click to reverse.' : 'Descending. Click to reverse.');
+  dirBtn.setAttribute('aria-label', asc ? 'Sort ascending, click to reverse' : 'Sort descending, click to reverse');
+  $$('button', viewSeg).forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === s.view)));
+  selectBtn.setAttribute('aria-pressed', String(ui.selectMode));
+}
+
+function visiblePrompts() {
+  const cmap = catMap();
+  const terms = ui.q.toLowerCase().trim().split(/\s+/).filter(Boolean);
+  const tagTerms = [], words = [];
+  terms.forEach(t => { if (t.length > 1 && t[0] === '#') tagTerms.push(t.slice(1)); else words.push(t); });
+  const sc = ui.scope;
+  const list = state.prompts.filter(p => {
+    if (sc === 'pinned' && !p.pinned) return false;
+    if (sc === 'recent' && !isRecent(p)) return false;
+    if (sc === 'unused' && p.uses) return false;
+    if (sc === 'uncat' && p.categoryId) return false;
+    if (sc.startsWith('cat:') && p.categoryId !== sc.slice(4)) return false;
+    for (const t of ui.tags) if (!p.tags.includes(t)) return false;
+    for (const t of tagTerms) if (!p.tags.some(x => x.includes(t))) return false;
+    if (words.length) {
+      const c = cmap.get(p.categoryId);
+      const hay = (p.title + '\n' + p.body + '\n' + p.notes + '\n' + p.tags.join(' ') + '\n' + (c ? c.name : '')).toLowerCase();
+      for (const w of words) if (!hay.includes(w)) return false;
+    }
+    return true;
+  });
+  const s = state.settings, def = SORTS[s.sort] || SORTS.uses;
+  const dir = s.sort === 'custom' ? 1 : (s.sortDir === 'asc' ? 1 : -1);
+  const ci = new Map(state.categories.map((c, i) => [c.id, i]));
+  list.sort((a, b) => {
+    if (s.pinnedFirst && a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+    return (def.cmp(a, b, ci) * dir) || titleCmp(a, b);
+  });
+  return list;
+}
+
+function usesLabel(p) {
+  if (!p.uses) return 'Not used yet';
+  return p.lastUsed ? `${plural(p.uses, 'use')}, ${rel(p.lastUsed)}` : plural(p.uses, 'use');
+}
+
+function cardHTML(p, cmap) {
+  const s = state.settings;
+  const cat = cmap.get(p.categoryId);
+  const hasVars = parseVars(p.body).length > 0;
+  const sel = ui.selected.has(p.id);
+  return `<article class="card${sel ? ' is-selected' : ''}" data-id="${esc(p.id)}" tabindex="0" draggable="true" style="--cat:${cat ? cat.color : 'var(--line-strong)'}" aria-label="${esc(p.title)}"${ui.selectMode ? ` aria-selected="${sel}"` : ''}>
+    <div class="card-head">
+      ${ui.selectMode ? `<span class="checkbox${sel ? ' on' : ''}" aria-hidden="true">${icon('check')}</span>` : ''}
+      ${s.show.category ? `<span class="card-cat">${cat ? esc(cat.name) : 'No category'}</span>` : ''}
+      <button class="icon-btn pin${p.pinned ? ' on' : ''}" data-act="pin" aria-pressed="${p.pinned}" aria-label="${p.pinned ? 'Unpin' : 'Pin'} ${esc(p.title)}" title="${p.pinned ? 'Unpin' : 'Pin to the top'}">${icon('star')}</button>
+    </div>
+    <h3 class="card-title">${hl(p.title)}</h3>
+    ${s.show.preview && p.body.trim() ? `<div class="card-preview">${rich(p.body)}</div>` : ''}
+    ${s.show.tags && p.tags.length ? `<div class="card-tags">${p.tags.map(t => `<button class="tag${ui.tags.has(t) ? ' on' : ''}" data-act="tag" data-tag="${esc(t)}" aria-pressed="${ui.tags.has(t)}"><span>#${hl(t)}</span></button>`).join('')}</div>` : ''}
+    <div class="card-foot">
+      <span class="card-stat" title="${esc(metaLine(p))}">${s.show.stats ? esc(usesLabel(p)) : ''}</span>
+      <div class="card-actions">
+        <button class="btn sm ghost" data-act="edit" aria-label="Edit ${esc(p.title)}">Edit</button>
+        <button class="btn sm" data-act="quick" aria-label="${hasVars ? 'Fill in' : 'Copy'} ${esc(p.title)}">${hasVars ? icon('braces') + '<span>Fill in</span>' : icon('copy') + '<span>Copy</span>'}</button>
+      </div>
+    </div>
+  </article>`;
+}
+
+function emptyHTML() {
+  if (!state.prompts.length) {
+    return `<div class="empty"><h2>Start your library</h2>
+      <p>Save the prompts you reuse and copy them in one click. Mark the parts that change each time as <span class="var">{{fields}}</span> and you’ll fill them in before copying.</p>
+      <div class="empty-actions"><button class="btn primary" data-eact="new">${icon('plus')}New prompt</button><button class="btn" data-eact="import">${icon('upload')}Import a file</button><button class="btn ghost" data-eact="pack:starter">Add starter prompts</button><button class="btn ghost" data-eact="pack:secdev-1">Add security and dev prompts</button></div></div>`;
+  }
+  const filtered = ui.q.trim() || ui.tags.size;
+  if (!filtered && ui.scope === 'pinned') return `<div class="empty"><h2>Nothing pinned yet</h2><p>Pin the prompts you reach for most. With “Keep pinned at the top” on in Settings, they stay first in every view.</p><button class="btn" data-eact="clear">Show all prompts</button></div>`;
+  if (!filtered && ui.scope === 'recent') return `<div class="empty"><h2>No prompts used this month</h2><p>Copying a prompt counts as a use. The ones you copy show up here for 30 days.</p><button class="btn" data-eact="clear">Show all prompts</button></div>`;
+  if (!filtered && ui.scope === 'unused') return `<div class="empty"><h2>Every prompt has been used</h2><p>Prompts you haven’t copied yet will appear here.</p><button class="btn" data-eact="clear">Show all prompts</button></div>`;
+  if (!filtered && ui.scope.startsWith('cat:')) return `<div class="empty"><h2>This category is empty</h2><p>Create a prompt here, or drag prompts onto the category in the sidebar.</p><div class="empty-actions"><button class="btn primary" data-eact="new">${icon('plus')}New prompt</button><button class="btn" data-eact="clear">Show all prompts</button></div></div>`;
+  return `<div class="empty"><h2>No prompts match</h2><p>Try fewer words, or clear the filters to see your whole library.</p>
+    <div class="empty-actions"><button class="btn" data-eact="clear">Clear filters</button>${ui.q.trim() ? `<button class="btn ghost" data-eact="new-from-q">${icon('plus')}New prompt called “${esc(trunc(ui.q.trim(), 40))}”</button>` : ''}</div></div>`;
+}
+
+function renderList() {
+  buildQRe();
+  if (ui.scope.startsWith('cat:') && !state.categories.some(c => 'cat:' + c.id === ui.scope)) ui.scope = 'all';
+  if (ui.scope === 'uncat' && !state.prompts.some(p => !p.categoryId)) ui.scope = 'all';
+  const list = visiblePrompts();
+  ui.visibleIds = list.map(p => p.id);
+  const k = captureFocus(cardsEl);
+  cardsEl.className = 'cards ' + (state.settings.view === 'list' ? 'as-list' : 'as-cards') + (ui.selectMode ? ' selecting' : '');
+  if (!list.length) cardsEl.innerHTML = emptyHTML();
+  else { const cmap = catMap(); cardsEl.innerHTML = list.map(p => cardHTML(p, cmap)).join(''); }
+  renderFilterbar(list.length);
+  restoreFocus(cardsEl, k);
+}
+
+function renderFilterbar(count) {
+  const k = captureFocus(filterbar);
+  const chip = (label, kind, val) => `<span class="chip"><span>${esc(label)}</span><button class="chip-x" data-fact="remove" data-kind="${kind}" data-val="${esc(val || '')}" aria-label="Remove filter ${esc(label)}">${icon('x')}</button></span>`;
+  const parts = [`<span class="result-count">${plural(count, 'prompt')}</span>`];
+  if (ui.scope !== 'all') parts.push(chip(scopeLabel(ui.scope), 'scope'));
+  ui.tags.forEach(t => parts.push(chip('#' + t, 'tag', t)));
+  if (ui.q.trim()) parts.push(chip(`“${trunc(ui.q.trim(), 30)}”`, 'q'));
+  if (parts.length > 2) parts.push('<button class="link" data-fact="clear">Clear filters</button>');
+  if (state.settings.sort === 'custom' && count > 1) parts.push('<span class="hint">Drag cards to reorder them.</span>');
+  else if (count > 0 && state.categories.length) parts.push('<span class="hint">Drag a card onto a category to move it.</span>');
+  filterbar.innerHTML = parts.join('');
+  restoreFocus(filterbar, k);
+}
+function scopeLabel(sc) {
+  if (sc.startsWith('cat:')) { const c = catMap().get(sc.slice(4)); return c ? c.name : 'Category'; }
+  return SCOPE_LABELS[sc] || sc;
+}
+
+function renderBulk() {
+  if (!ui.selectMode) { bulkbar.hidden = true; bulkbar.innerHTML = ''; return; }
+  for (const id of [...ui.selected]) if (!getPrompt(id)) ui.selected.delete(id);
+  const k = captureFocus(bulkbar);
+  const n = ui.selected.size, dis = n ? '' : ' disabled';
+  const sel = [...ui.selected].map(getPrompt);
+  const allPinned = n > 0 && sel.every(p => p.pinned);
+  bulkbar.hidden = false;
+  bulkbar.innerHTML = `<strong class="bulk-count">${n ? plural(n, 'prompt') + ' selected' : 'Choose prompts to change'}</strong>
+    <button class="btn sm ghost" data-bact="all">Select all ${ui.visibleIds.length}</button>
+    ${n ? '<button class="btn sm ghost" data-bact="none">Clear</button>' : ''}
+    <span class="grow"></span>
+    <div class="select-wrap"><select class="control sm" data-bact="move" aria-label="Move selected prompts to a category"${dis}><option value="">Move to…</option>${state.categories.map(c => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('')}<option value="__none">No category</option></select>${icon('chev')}</div>
+    <button class="btn sm" data-bact="tag"${dis}>${icon('tag')}Add tag</button>
+    <button class="btn sm" data-bact="pin"${dis}>${icon('star')}${allPinned ? 'Unpin' : 'Pin'}</button>
+    <button class="btn sm" data-bact="export"${dis}>${icon('download')}Export</button>
+    <button class="btn sm danger" data-bact="delete"${dis}>${icon('trash')}Delete</button>
+    <button class="btn sm primary" data-bact="done">Done</button>`;
+  restoreFocus(bulkbar, k);
+}
+
+/* ================= Actions ================= */
+function setScope(sc) {
+  ui.scope = sc;
+  if (narrowMQ.matches) setSidebar(false);
+  renderSidebar(); renderList(); renderBulk();
+  content.scrollTop = 0;
+}
+function toggleTag(t) {
+  ui.tags.has(t) ? ui.tags.delete(t) : ui.tags.add(t);
+  renderSidebar(); renderList(); renderBulk();
+}
+function clearFilters() {
+  ui.scope = 'all'; ui.tags.clear(); ui.q = ''; qInput.value = '';
+  renderSidebar(); renderList(); renderBulk();
+}
+function setSidebar(open) {
+  ui.sidebarOpen = open;
+  app.dataset.sidebar = open ? 'open' : 'closed';
+  menuBtn.setAttribute('aria-expanded', String(open));
+  scrim.classList.toggle('on', open || !!ui.drawer);
+  if (open) setTimeout(() => { const f = $('.nav-item[aria-current="true"]', sidebar) || $('.nav-item', sidebar); f && f.focus(); }, 60);
+}
+function setSelectMode(on) {
+  ui.selectMode = on;
+  if (!on) ui.selected.clear();
+  renderToolbar(); renderList(); renderBulk();
+}
+let lastSel = null;
+function toggleSelect(id, shift) {
+  if (shift && lastSel && ui.visibleIds.includes(lastSel)) {
+    const a = ui.visibleIds.indexOf(lastSel), b = ui.visibleIds.indexOf(id);
+    for (let i = Math.min(a, b); i <= Math.max(a, b); i++) ui.selected.add(ui.visibleIds[i]);
+  } else if (ui.selected.has(id)) ui.selected.delete(id);
+  else ui.selected.add(id);
+  lastSel = id;
+  renderList(); renderBulk();
+}
+
+function recordUse(p) {
+  const t = Date.now();
+  p.uses++; p.lastUsed = t; p.recent.push(t);
+  if (p.recent.length > 60) p.recent.splice(0, p.recent.length - 60);
+}
+async function copyText(text) {
+  try {
+    if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(text); return true; }
+  } catch (e) { /* try the fallback */ }
+  try {
+    const prev = document.activeElement;
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.setAttribute('readonly', '');
+    ta.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;';
+    document.body.appendChild(ta);
+    ta.select(); ta.setSelectionRange(0, text.length);
+    const ok = document.execCommand('copy');
+    ta.remove();
+    if (prev && prev.focus) prev.focus({ preventScroll: true });
+    return ok;
+  } catch (e) { return false; }
+}
+function flash(btn, label) {
+  if (!btn) return;
+  const span = btn.querySelector('span');
+  const target = span || btn;
+  const orig = target.textContent;
+  target.textContent = label || 'Copied';
+  btn.classList.add('copied');
+  setTimeout(() => { if (btn.isConnected) { target.textContent = orig; btn.classList.remove('copied'); } }, 1400);
+}
+async function quickUse(p) {
+  if (parseVars(p.body).length) { openDrawer(p.id, 'use'); return; }
+  const ok = await copyText(p.body);
+  if (!ok) { toast('The clipboard isn’t available here. Open the prompt and copy the text by hand.', { kind: 'warn', timeout: 5000 }); return; }
+  if (state.settings.countCopies) { recordUse(p); commit(); }
+  toast(`Copied “${trunc(p.title, 44)}”.`);
+  requestAnimationFrame(() => flash($(`.card[data-id="${cssId(p.id)}"] [data-act="quick"]`, cardsEl)));
+}
+function togglePin(p) { p.pinned = !p.pinned; commit(); }
+function duplicate(p) {
+  const t = Date.now();
+  const c = normPrompt({ ...p, id: uid(), title: p.title + ' (copy)', uses: 0, lastUsed: null, recent: [], history: [], createdAt: t, updatedAt: t, order: p.order + 0.001, pinned: false, sample: false });
+  state.prompts.push(c);
+  commit();
+  toast(`Made a copy of “${trunc(p.title, 40)}”.`);
+  openDrawer(c.id, 'edit');
+}
+async function deletePrompts(ids) {
+  ids = ids.filter(getPrompt);
+  if (!ids.length) return false;
+  const one = ids.length === 1 ? getPrompt(ids[0]) : null;
+  if (state.settings.confirmDelete) {
+    const ok = await confirmModal({ title: one ? `Delete “${trunc(one.title, 50)}”?` : `Delete ${ids.length} prompts?`, message: 'You can undo this right after.', confirm: 'Delete', danger: true });
+    if (!ok) return false;
+  }
+  snapshot(one ? `deleting “${trunc(one.title, 40)}”` : `deleting ${ids.length} prompts`);
+  const set = new Set(ids);
+  state.prompts = state.prompts.filter(p => !set.has(p.id));
+  ids.forEach(i => ui.selected.delete(i));
+  if (ui.drawer && set.has(ui.drawer.id)) { ui.drawer.dirty = false; closeDrawer(); }
+  commit();
+  toast(one ? `Deleted “${trunc(one.title, 40)}”.` : `Deleted ${ids.length} prompts.`, { action: 'Undo', onAction: undo, timeout: 7000 });
+  return true;
+}
+function moveTo(ids, catId) {
+  const ps = ids.map(getPrompt).filter(Boolean);
+  if (!ps.length) return;
+  snapshot(ps.length === 1 ? `moving “${trunc(ps[0].title, 40)}”` : `moving ${ps.length} prompts`);
+  ps.forEach(p => { p.categoryId = catId || null; });
+  commit();
+  const c = catMap().get(catId);
+  toast(`Moved ${ps.length === 1 ? '“' + trunc(ps[0].title, 36) + '”' : ps.length + ' prompts'} to ${c ? c.name : 'No category'}.`, { action: 'Undo', onAction: undo });
+}
+function addCategory(name) {
+  name = String(name || '').trim().slice(0, 60);
+  if (!name) return null;
+  const ex = state.categories.find(c => c.name.toLowerCase() === name.toLowerCase());
+  if (ex) { toast(`There’s already a category called “${ex.name}”.`); return ex; }
+  const c = { id: uid(), name, color: nextColor() };
+  state.categories.push(c);
+  commit();
+  return c;
+}
+function reorder(srcId, tgtId) {
+  const ordered = [...state.prompts].sort((a, b) => a.order - b.order);
+  const si = ordered.findIndex(p => p.id === srcId), ti = ordered.findIndex(p => p.id === tgtId);
+  if (si < 0 || ti < 0 || si === ti) return;
+  const [m] = ordered.splice(si, 1);
+  ordered.splice(ti, 0, m);
+  ordered.forEach((p, i) => { p.order = i; });
+  commit();
+}
+
+/* ================= Drawer: use and edit ================= */
+const cloneDraft = p => ({ title: p.title, body: p.body, categoryId: p.categoryId, tags: [...p.tags], notes: p.notes, rating: p.rating });
+function blankDraft(title) {
+  const catId = ui.scope.startsWith('cat:') ? ui.scope.slice(4) : null;
+  return { title: title || '', body: '', categoryId: catId, tags: [...ui.tags], notes: '', rating: 0 };
+}
+function openDrawer(id, mode, presetTitle) {
+  const p = id ? getPrompt(id) : null;
+  if (id && !p) return;
+  const prevRet = ui.drawer ? ui.drawer.retId : null;
+  const active = document.activeElement;
+  const retCard = active && active.closest ? active.closest('.card') : null;
+  ui.drawer = {
+    id: p ? p.id : null, mode: p ? (mode || 'use') : 'edit',
+    draft: p ? cloneDraft(p) : blankDraft(presetTitle), values: p ? { ...p.varValues } : {}, dirty: false,
+    retId: prevRet || (retCard ? retCard.dataset.id : null) || (p ? p.id : null)
+  };
+  renderDrawer();
+  drawer.classList.add('open');
+  scrim.classList.add('on');
+  app.inert = true;
+  requestAnimationFrame(focusDrawer);
+}
+function closeDrawer() {
+  const retId = ui.drawer ? ui.drawer.retId : null;
+  ui.drawer = null;
+  drawer.classList.remove('open');
+  app.inert = false;
+  scrim.classList.toggle('on', ui.sidebarOpen);
+  const card = retId && $(`.card[data-id="${cssId(retId)}"]`, cardsEl);
+  if (card) card.focus({ preventScroll: false }); else newBtn.focus();
+}
+async function requestCloseDrawer() {
+  const d = ui.drawer;
+  if (!d) return;
+  if (d.mode === 'edit' && d.dirty) {
+    const ok = await confirmModal({ title: 'Discard changes?', message: 'Your edits to this prompt haven’t been saved.', confirm: 'Discard changes', cancel: 'Keep editing', danger: true });
+    if (!ok) return;
+  }
+  closeDrawer();
+}
+function focusDrawer() {
+  const d = ui.drawer;
+  if (!d) return;
+  const el = d.mode === 'use' ? ($('textarea[data-var]', drawer) || $('#copyBtn', drawer)) : (d.id ? $('#fBody', drawer) : $('#fTitle', drawer));
+  if (el) el.focus({ preventScroll: true });
+}
+function autosize(t) { t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight + 2, 320) + 'px'; }
+
+function starsHTML(val, ctx) {
+  return `<div class="stars" role="radiogroup" aria-label="Rating" data-ctx="${ctx}">${[1, 2, 3, 4, 5].map(n =>
+    `<button type="button" role="radio" aria-checked="${val === n}" aria-label="${n} of 5" title="${val === n ? 'Click again to clear' : n + ' of 5'}" class="${n <= val ? 'on' : ''}" data-rate="${n}">${icon('star')}</button>`).join('')}</div>`;
+}
+function metaLine(p) {
+  const used = p.uses ? `Used ${plural(p.uses, 'time')}${p.lastUsed ? ', most recently ' + rel(p.lastUsed) : ''}.` : 'Not used yet.';
+  const wk = weekUses(p);
+  return `${used}${wk ? ` ${wk} this week.` : ''} Edited ${rel(p.updatedAt)}.`;
+}
+function countLabel(body) {
+  const n = body.length;
+  if (!n) return '';
+  return `${plural(n, 'character')}, about ${plural(Math.max(1, Math.round(n / 4)), 'token')}`;
+}
+function varsSummary(vars) {
+  if (!vars.length) return '<span>No fields yet</span>';
+  return `<span class="vars-list">Fields: ${vars.map(v => `<span class="var">${esc(v.name)}</span>`).join('')}</span>`;
+}
+function catOptions(sel) {
+  return `<option value="">No category</option>${state.categories.map(c => `<option value="${esc(c.id)}"${c.id === sel ? ' selected' : ''}>${esc(c.name)}</option>`).join('')}<option value="__new">New category…</option>`;
+}
+
+function useHTML(p, d) {
+  const cat = catMap().get(p.categoryId);
+  const vars = parseVars(p.body);
+  return `
+  <header class="drawer-head">
+    <div class="seg" role="tablist" aria-label="Mode">
+      <button role="tab" aria-selected="true" data-dact="mode" data-mode="use">Use</button>
+      <button role="tab" aria-selected="false" data-dact="mode" data-mode="edit">Edit</button>
+    </div>
+    <span class="grow"></span>
+    <button class="icon-btn pin${p.pinned ? ' on' : ''}" data-dact="pin" aria-pressed="${p.pinned}" aria-label="${p.pinned ? 'Unpin' : 'Pin'}" title="${p.pinned ? 'Unpin' : 'Pin to the top'}">${icon('star')}</button>
+    <button class="icon-btn" data-dact="duplicate" aria-label="Duplicate" title="Duplicate">${icon('dup')}</button>
+    <button class="icon-btn" data-dact="delete" aria-label="Delete" title="Delete">${icon('trash')}</button>
+    <button class="icon-btn" data-dact="close" aria-label="Close" title="Close (Esc)">${icon('x')}</button>
+  </header>
+  <div class="drawer-body">
+    <div class="d-top"><span class="d-cat" style="--c:${cat ? cat.color : 'var(--line-strong)'}">${cat ? esc(cat.name) : 'No category'}</span>${starsHTML(p.rating, 'use')}</div>
+    <h2 class="d-title" id="drawerTitle">${esc(p.title)}</h2>
+    <p class="d-meta" id="dMeta">${esc(metaLine(p))}</p>
+    ${p.tags.length ? `<div class="d-tags">${p.tags.map(t => `<span class="tag static">#${esc(t)}</span>`).join('')}</div>` : ''}
+    ${vars.length ? `<section class="d-section" aria-labelledby="fillHead">
+      <div class="d-section-head"><h3 id="fillHead">Fill in</h3><button class="link" data-dact="clear-vars" style="margin-left:auto">Clear fields</button></div>
+      ${vars.map((v, i) => `<label class="fill-field"><span class="var">${esc(v.name)}</span><textarea data-var="${esc(v.name)}" rows="1" placeholder="${esc(v.def)}" aria-label="${esc(v.name)}${v.def ? ', default ' + esc(v.def) : ''}">${esc(d.values[v.name] || '')}</textarea></label>`).join('')}
+    </section>` : ''}
+    <section class="d-section" aria-labelledby="pvHead">
+      <div class="d-section-head"><h3 id="pvHead">${vars.length ? 'Preview' : 'Prompt'}</h3><span class="d-count">${esc(countLabel(p.body))}</span></div>
+      <div class="d-preview" id="dPreview">${filledHTML(p.body, d.values)}</div>
+    </section>
+    ${p.notes.trim() ? `<section class="d-section"><div class="d-section-head"><h3>Notes</h3></div><p class="d-notes">${esc(p.notes)}</p></section>` : ''}
+  </div>
+  <footer class="drawer-foot">
+    <span class="hint hide-sm"><kbd>${MOD}</kbd><kbd>Enter</kbd> copies</span>
+    <span class="grow"></span>
+    <button class="btn primary" data-dact="copy" id="copyBtn">${icon('copy')}<span>Copy prompt</span></button>
+  </footer>`;
+}
+
+function editHTML(p, d) {
+  const isNew = !p;
+  const vars = parseVars(d.draft.body);
+  return `
+  <header class="drawer-head">
+    ${isNew ? '<h2 class="drawer-heading" id="drawerTitle">New prompt</h2>' :
+      `<div class="seg" role="tablist" aria-label="Mode"><button role="tab" aria-selected="false" data-dact="mode" data-mode="use">Use</button><button role="tab" aria-selected="true" data-dact="mode" data-mode="edit">Edit</button></div><h2 class="sr-only" id="drawerTitle">Edit ${esc(p.title)}</h2>`}
+    <span class="grow"></span>
+    <button class="icon-btn" data-dact="close" aria-label="Close" title="Close (Esc)">${icon('x')}</button>
+  </header>
+  <div class="drawer-body">
+    <label class="field"><span class="label">Title</span><input id="fTitle" type="text" value="${esc(d.draft.title)}" maxlength="200" placeholder="What this prompt does" autocomplete="off"></label>
+    <div class="field-row">
+      <label class="field"><span class="label">Category</span><div class="select-wrap full"><select id="fCat" class="control full">${catOptions(d.draft.categoryId)}</select>${icon('chev')}</div></label>
+      <div class="field"><span class="label">Rating</span>${starsHTML(d.draft.rating, 'edit')}</div>
+    </div>
+    <div class="field"><span class="label" id="tagLbl">Tags</span>
+      <div class="tag-input" id="tagBox">${tagChips(d.draft.tags)}<input id="fTagInput" type="text" list="tagSuggest" placeholder="${d.draft.tags.length ? 'Add another' : 'Type a tag, then Enter'}" aria-labelledby="tagLbl" autocomplete="off"></div>
+      <datalist id="tagSuggest">${allTags().map(([t]) => `<option value="${esc(t)}"></option>`).join('')}</datalist>
+    </div>
+    <div class="field">
+      <div class="label-row"><label class="label" for="fBody">Prompt</label><button class="btn sm" type="button" data-dact="insert-var" title="Wrap the selected text in {{ }}">${icon('braces')}<span>Insert field</span></button></div>
+      <textarea id="fBody" class="mono" rows="12" placeholder="Write your prompt. Use {{topic}} for anything that changes each time.">${esc(d.draft.body)}</textarea>
+      <div class="body-meta"><span id="fVars">${varsSummary(vars)}</span><span class="grow"></span><span id="fCount">${esc(countLabel(d.draft.body))}</span></div>
+    </div>
+    <p class="help">Write <code>{{name}}</code> for a field you fill in each time you use the prompt, or <code>{{name: default}}</code> to give it a starting value. Select some text and press Insert field to turn it into one.</p>
+    <label class="field"><span class="label">Notes</span><textarea id="fNotes" rows="3" placeholder="When to use it, which model works best, what to watch for">${esc(d.draft.notes)}</textarea></label>
+    ${p && p.history.length ? historyHTML(p) : ''}
+  </div>
+  <footer class="drawer-foot">
+    ${p ? `<button class="btn ghost danger" data-dact="delete">${icon('trash')}<span>Delete</span></button>` : ''}
+    <span class="grow"></span>
+    <span class="hint hide-sm"><kbd>${MOD}</kbd><kbd>S</kbd></span>
+    <button class="btn ghost" data-dact="cancel">Cancel</button>
+    <button class="btn primary" data-dact="save">${isNew ? 'Create prompt' : 'Save changes'}</button>
+  </footer>`;
+}
+function tagChips(tags) {
+  return tags.map(t => `<span class="chip"><span>#${esc(t)}</span><button class="chip-x" type="button" data-dact="rm-tag" data-tag="${esc(t)}" aria-label="Remove tag ${esc(t)}">${icon('x')}</button></span>`).join('');
+}
+function historyHTML(p) {
+  const items = p.history.map((h, i) => ({ h, i })).reverse();
+  return `<details class="history"><summary>Earlier versions (${items.length})</summary><ul class="history-list">${items.map(({ h, i }) =>
+    `<li><div class="h-meta">Saved ${esc(fmtDate(h.at))}, ${esc(rel(h.at))}</div><pre class="h-body">${esc(trunc(h.body, 360))}</pre><button class="btn sm" data-dact="restore" data-idx="${i}">Put this version in the editor</button></li>`).join('')}</ul></details>`;
+}
+
+function renderDrawer() {
+  const d = ui.drawer;
+  if (!d) return;
+  const p = d.id ? getPrompt(d.id) : null;
+  if (d.id && !p) { closeDrawer(); return; }
+  drawer.innerHTML = (d.mode === 'use' && p) ? useHTML(p, d) : editHTML(p, d);
+  $$('textarea[data-var], #fNotes', drawer).forEach(autosize);
+}
+function updateTagBox() {
+  const box = $('#tagBox', drawer);
+  if (!box) return;
+  $$('.chip', box).forEach(c => c.remove());
+  box.insertAdjacentHTML('afterbegin', tagChips(ui.drawer.draft.tags));
+  const inp = $('#fTagInput', box);
+  if (inp) inp.placeholder = ui.drawer.draft.tags.length ? 'Add another' : 'Type a tag, then Enter';
+}
+function addDraftTags(str) {
+  const d = ui.drawer;
+  const add = normTags(String(str).split(','));
+  let changed = false;
+  add.forEach(t => { if (!d.draft.tags.includes(t)) { d.draft.tags.push(t); changed = true; } });
+  if (changed) { d.dirty = true; updateTagBox(); }
+}
+function updateBodyMeta() {
+  const d = ui.drawer;
+  const v = $('#fVars', drawer), c = $('#fCount', drawer);
+  if (v) v.innerHTML = varsSummary(parseVars(d.draft.body));
+  if (c) c.textContent = countLabel(d.draft.body);
+}
+async function switchMode(mode) {
+  const d = ui.drawer;
+  if (!d || d.mode === mode) return;
+  const p = getPrompt(d.id);
+  if (!p) return;
+  if (d.mode === 'edit' && d.dirty) {
+    const ok = await confirmModal({ title: 'Discard changes?', message: 'Your edits to this prompt haven’t been saved.', confirm: 'Discard changes', cancel: 'Keep editing', danger: true });
+    if (!ok) return;
+  }
+  d.mode = mode; d.draft = cloneDraft(p); d.dirty = false;
+  renderDrawer();
+  focusDrawer();
+}
+function saveDraft() {
+  const d = ui.drawer;
+  if (!d || d.mode !== 'edit') return;
+  const ti = $('#fTagInput', drawer);
+  if (ti && ti.value.trim()) { addDraftTags(ti.value); ti.value = ''; }
+  const dr = d.draft;
+  let title = dr.title.trim();
+  const body = dr.body;
+  if (!title && !body.trim()) { toast('Add a title or some prompt text before saving.', { kind: 'warn' }); const f = $('#fTitle', drawer); f && f.focus(); return; }
+  if (!title) title = trunc(body.trim().split('\n')[0], 60);
+  const t = Date.now();
+  let p = d.id ? getPrompt(d.id) : null;
+  if (p) {
+    if (p.body !== body && p.body.trim()) { p.history.push({ body: p.body, at: p.updatedAt }); if (p.history.length > 10) p.history.shift(); }
+    Object.assign(p, { title, body, categoryId: dr.categoryId || null, tags: normTags(dr.tags), notes: dr.notes, rating: dr.rating, updatedAt: t, sample: false });
+  } else {
+    const minOrder = state.prompts.reduce((m, x) => Math.min(m, x.order), 0);
+    p = normPrompt({ id: uid(), title, body, categoryId: dr.categoryId || null, tags: dr.tags, notes: dr.notes, rating: dr.rating, createdAt: t, updatedAt: t, order: minOrder - 1 });
+    state.prompts.push(p);
+    d.id = p.id; d.retId = p.id;
+  }
+  d.dirty = false;
+  commit();
+  toast(`Saved “${trunc(p.title, 44)}”.`);
+  d.mode = 'use'; d.draft = cloneDraft(p); d.values = { ...p.varValues };
+  renderDrawer();
+  focusDrawer();
+}
+async function cancelEdit() {
+  const d = ui.drawer;
+  if (!d) return;
+  if (!d.id) { requestCloseDrawer(); return; }
+  switchMode('use');
+}
+function insertVar() {
+  const ta = $('#fBody', drawer);
+  if (!ta) return;
+  const s = ta.selectionStart, e = ta.selectionEnd;
+  const sel = ta.value.slice(s, e).trim();
+  const ok = sel && sel.length <= 40 && !/[{}\n:]/.test(sel);
+  if (ok) ta.setRangeText(`{{${sel}}}`, s, e, 'end');
+  else {
+    ta.setRangeText('{{field}}', e, e, 'end');
+    ta.setSelectionRange(e + 2, e + 7);
+  }
+  ta.focus();
+  ta.dispatchEvent(new Event('input', { bubbles: true }));
+}
+async function copyFromDrawer() {
+  const d = ui.drawer;
+  if (!d || d.mode !== 'use') return;
+  const p = getPrompt(d.id);
+  if (!p) return;
+  const { text, missing } = fillText(p.body, d.values);
+  const ok = await copyText(text);
+  if (!ok) { toast('The clipboard isn’t available here. Select the preview text and copy it by hand.', { kind: 'warn', timeout: 5000 }); return; }
+  const names = new Set(parseVars(p.body).map(v => v.name));
+  const kept = {};
+  for (const [k, v] of Object.entries(d.values)) if (names.has(k) && v) kept[k] = v;
+  p.varValues = kept;
+  if (state.settings.countCopies) recordUse(p);
+  commit();
+  flash($('#copyBtn', drawer));
+  const m = $('#dMeta', drawer);
+  if (m) m.textContent = metaLine(p);
+  toast(missing.length ? `Copied. ${missing.length === 1 ? 'One field was' : missing.length + ' fields were'} left empty: ${missing.map(x => '{{' + x + '}}').join(', ')}.` : `Copied “${trunc(p.title, 44)}”.`);
+  if (state.settings.closeOnCopy) closeDrawer();
+}
+function refreshOpenViews() {
+  if (ui.drawer) {
+    if (ui.drawer.id && !getPrompt(ui.drawer.id)) { if (ui.drawer.mode === 'edit' && ui.drawer.dirty) ui.drawer.id = null; else { closeDrawer(); } }
+    else if (ui.drawer.mode === 'use') renderDrawer();
+  }
+  const cm = $('#catManage', modalWrap);
+  if (cm) renderCatRows(modalWrap);
+}
+
+/* ================= Modals ================= */
+let modalResolve = null, modalRet = null, modalActions = [];
+function openModal(opts) {
+  return new Promise(res => {
+    if (modalResolve) { const r = modalResolve; modalResolve = null; r(null); }
+    modalResolve = res;
+    modalRet = document.activeElement;
+    modalActions = opts.actions || [];
+    modalWrap.innerHTML = `<div class="modal${opts.wide ? ' wide' : ''}" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-head"><h2 id="modalTitle">${esc(opts.title)}</h2><button class="icon-btn sm" data-mact="close" aria-label="Close">${icon('x')}</button></div>
+      <div class="modal-body">${opts.body || ''}</div>
+      ${modalActions.length ? `<div class="modal-foot">${modalActions.map((a, i) => `<button class="btn ${a.kind || ''}" data-mact="${i}">${esc(a.label)}</button>`).join('')}</div>` : ''}
+    </div>`;
+    modalWrap.hidden = false;
+    app.inert = true;
+    drawer.inert = true;
+    const m = modalWrap.firstElementChild;
+    if (opts.onMount) opts.onMount(m);
+    const f = $('[autofocus]', m) || $('.modal-foot .btn.primary, .modal-foot .btn.danger-solid', m) || $('.modal-body button, .modal-body input, .modal-body select', m) || $('[data-mact="close"]', m);
+    if (f) f.focus();
+  });
+}
+function closeModal(val) {
+  if (modalWrap.hidden) return;
+  modalWrap.hidden = true;
+  modalWrap.innerHTML = '';
+  drawer.inert = false;
+  app.inert = !!ui.drawer;
+  const r = modalResolve, ret = modalRet;
+  modalResolve = null; modalRet = null;
+  if (ret && ret.isConnected && ret.focus) ret.focus({ preventScroll: true });
+  else if (ui.drawer) focusDrawer();
+  if (r) r(val);
+}
+modalWrap.addEventListener('click', e => {
+  if (e.target === modalWrap) { closeModal(null); return; }
+  const b = e.target.closest('[data-mact]');
+  if (!b) return;
+  if (b.dataset.mact === 'close') { closeModal(null); return; }
+  const a = modalActions[+b.dataset.mact];
+  if (!a) return;
+  const v = typeof a.value === 'function' ? a.value(modalWrap.firstElementChild) : (a.value !== undefined ? a.value : +b.dataset.mact);
+  closeModal(v);
+});
+function confirmModal(o) {
+  return openModal({
+    title: o.title, body: `<p class="modal-text">${esc(o.message || '')}</p>`,
+    actions: [{ label: o.cancel || 'Cancel', kind: 'ghost', value: false }, { label: o.confirm || 'Confirm', kind: o.danger ? 'danger-solid' : 'primary', value: true }]
+  }).then(v => v === true);
+}
+function promptModal(o) {
+  return openModal({
+    title: o.title,
+    body: `<label class="field" style="margin:4px 0 0"><span class="label">${esc(o.label || 'Name')}</span><input type="text" id="modalInput" value="${esc(o.value || '')}" placeholder="${esc(o.placeholder || '')}" maxlength="${o.max || 60}" autocomplete="off" autofocus></label>`,
+    actions: [{ label: 'Cancel', kind: 'ghost', value: null }, { label: o.confirm || 'Save', kind: 'primary', value: m => $('#modalInput', m).value.trim() || null }],
+    onMount(m) {
+      const inp = $('#modalInput', m);
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('.modal-foot .btn.primary', m).click(); } });
+      setTimeout(() => inp.select(), 0);
+    }
+  });
+}
+
+/* ---------- Settings ---------- */
+function radioSeg(key, opts) {
+  const cur = getPath(state.settings, key);
+  return `<div class="seg radios" role="radiogroup">${opts.map(([v, l]) => `<label><input type="radio" name="set-${key}" data-setting="${key}" value="${v}"${String(cur) === v ? ' checked' : ''}><span>${esc(l)}</span></label>`).join('')}</div>`;
+}
+function swatchRow(key, map) {
+  const cur = state.settings[key], dark = isDark();
+  return `<div class="swatches" role="radiogroup">${Object.entries(map).map(([k, c]) => `<label class="swatch" title="${c.label}"><input type="radio" name="set-${key}" data-setting="${key}" value="${k}"${cur === k ? ' checked' : ''} aria-label="${c.label}"><span class="sw" data-light="${c.light}" data-dark="${c.dark}" style="background:${dark ? c.dark : c.light}"></span></label>`).join('')}</div>`;
+}
+function check(key, label) {
+  return `<label class="check"><input type="checkbox" data-setting="${key}"${getPath(state.settings, key) ? ' checked' : ''}>${esc(label)}</label>`;
+}
+function getPath(o, k) { return k.split('.').reduce((a, x) => (a == null ? a : a[x]), o); }
+function setPath(o, k, v) { const ps = k.split('.'); let a = o; for (let i = 0; i < ps.length - 1; i++) a = a[ps[i]]; a[ps[ps.length - 1]] = v; }
+
+function settingsHTML() {
+  const s = state.settings;
+  return `<div class="settings">
+    <section class="set-section"><h3>Appearance</h3>
+      <div class="set-row"><span class="set-label">Theme</span>${radioSeg('theme', [['auto', 'Match system'], ['light', 'Light'], ['dark', 'Dark']])}</div>
+      <div class="set-row"><span class="set-label">Accent</span>${swatchRow('accent', ACCENTS)}</div>
+      <div class="set-row"><span class="set-label">Field highlight</span>${swatchRow('hilite', HILITES)}</div>
+      <div class="set-row"><span class="set-label">Text size</span>${radioSeg('textSize', [['s', 'Small'], ['m', 'Medium'], ['l', 'Large']])}</div>
+      <div class="set-row"><span class="set-label">Spacing</span>${radioSeg('density', [['comfortable', 'Comfortable'], ['compact', 'Compact']])}</div>
+      <div class="set-row"><span class="set-label">Layout</span>${radioSeg('view', [['cards', 'Cards'], ['list', 'List']])}</div>
+    </section>
+    <section class="set-section"><h3>Cards</h3>
+      <div class="set-row"><span class="set-label">Show on each card</span><div class="checks">${check('show.category', 'Category')}${check('show.preview', 'Prompt preview')}${check('show.tags', 'Tags')}${check('show.stats', 'Usage')}</div></div>
+      <div class="set-row"><span class="set-label">Preview length</span><div class="range-row"><input type="range" min="1" max="12" step="1" value="${s.previewLines}" data-setting="previewLines" aria-label="Preview length in lines"><output id="linesOut">${plural(s.previewLines, 'line')}</output></div></div>
+      <div class="set-row"><span class="set-label">Pinned prompts</span><div class="checks">${check('pinnedFirst', 'Keep pinned at the top')}</div></div>
+    </section>
+    <section class="set-section"><h3>Behavior</h3>
+      <div class="set-row"><span class="set-label">Clicking a prompt</span>${radioSeg('openMode', [['use', 'Opens Use'], ['edit', 'Opens Edit']])}</div>
+      <div class="set-row"><span class="set-label">Copying</span><div class="checks">${check('countCopies', 'Count each copy as a use')}${check('closeOnCopy', 'Close the panel after copying')}</div></div>
+      <div class="set-row"><span class="set-label">Deleting</span><div class="checks">${check('confirmDelete', 'Ask before deleting')}</div></div>
+    </section>
+    <section class="set-section"><h3>Prompt packs</h3>
+      <p class="set-note">Ready-made prompts you can add or take back out. Adding a pack again restores any you deleted and skips ones you already have. Removing one only removes the prompts you haven’t edited.</p>
+      ${Object.entries(PACKS).map(([id, pk]) => {
+        const total = pk.build().prompts.length, have = packCount(id), unedited = state.prompts.filter(p => p.pack === id && p.sample).length;
+        return `<div class="set-row"><span class="set-label">${esc(pk.label)}</span><div class="pack-row"><p class="pack-about">${esc(pk.about)} ${have ? `${have} of ${total} in your library.` : `${total} prompts.`}</p><div class="data-actions">${have < total ? `<button class="btn sm" data-sact="pack-add:${id}">${icon('plus')}${have ? 'Add the missing ' + (total - have) : 'Add ' + total + ' prompts'}</button>` : ''}${unedited ? `<button class="btn sm ghost" data-sact="pack-remove:${id}">Remove ${unedited} unedited</button>` : ''}</div></div></div>`;
+      }).join('')}
+    </section>
+    <section class="set-section"><h3>Your data</h3>
+      <p class="set-note"><span id="syncNote">${esc(syncLabel())}</span>. A backup file keeps everything, including usage and earlier versions. CSV and JSON lists from other tools import too.</p>
+      <div class="data-actions">
+        <button class="btn sm" data-sact="export-json">${icon('download')}Export backup (.json)</button>
+        <button class="btn sm" data-sact="export-md">${icon('download')}Export as Markdown</button>
+        <button class="btn sm" data-sact="export-csv">${icon('download')}Export as CSV</button>
+        <button class="btn sm" data-sact="import">${icon('upload')}Import a file</button>
+      </div>
+      <div class="data-actions" style="margin-top:10px">
+        <button class="btn sm ghost danger" data-sact="wipe">Delete all prompts</button>
+      </div>
+    </section>
+  </div>`;
+}
+function openSettings() {
+  openModal({
+    title: 'Settings', wide: true, body: settingsHTML(),
+    actions: [{ label: 'Done', kind: 'primary', value: true }],
+    onMount(m) {
+      const onChange = e => {
+        const el = e.target, key = el.dataset && el.dataset.setting;
+        if (!key) return;
+        let val = el.type === 'checkbox' ? el.checked : el.type === 'range' ? +el.value : el.value;
+        setPath(state.settings, key, val);
+        if (key === 'previewLines') { const o = $('#linesOut', m); if (o) o.textContent = plural(val, 'line'); }
+        commit();
+        if (key === 'theme') $$('.sw', m).forEach(s => { s.style.background = isDark() ? s.dataset.dark : s.dataset.light; });
+      };
+      m.addEventListener('change', onChange);
+      m.addEventListener('input', e => { if (e.target.type === 'range') onChange(e); });
+      m.addEventListener('click', e => { const b = e.target.closest('[data-sact]'); if (b) dataAction(b.dataset.sact); });
+    }
+  });
+}
+async function dataAction(act) {
+  if (act === 'export-json') return saveFile(`prompt-library-${stamp()}.json`, exportJSON(state.prompts));
+  if (act === 'export-md') return saveFile(`prompt-library-${stamp()}.md`, toMarkdown(sortedForExport(state.prompts)));
+  if (act === 'export-csv') return saveFile(`prompt-library-${stamp()}.csv`, toCSV(sortedForExport(state.prompts)));
+  if (act === 'import') { closeModal(null); fileInput.click(); return; }
+  if (act.startsWith('pack-add:')) { closeModal(null); addPack(act.slice(9)); return; }
+  if (act.startsWith('pack-remove:')) { closeModal(null); removePack(act.slice(12)); return; }
+  if (act === 'wipe') {
+    closeModal(null);
+    const n = state.prompts.length;
+    if (!n && !state.categories.length) { toast('Your library is already empty.'); return; }
+    const ok = await confirmModal({ title: `Delete all ${plural(n, 'prompt')}?`, message: 'This removes every prompt and category. You can undo it right after, and an exported backup restores it any time.', confirm: 'Delete everything', danger: true });
+    if (!ok) return;
+    snapshot('deleting everything');
+    state.prompts = []; state.categories = [];
+    if (ui.drawer) { ui.drawer.dirty = false; closeDrawer(); }
+    commit();
+    toast('Deleted every prompt and category.', { action: 'Undo', onAction: undo, timeout: 9000 });
+  }
+}
+
+/* ---------- Categories manager ---------- */
+function openCategories() {
+  openModal({
+    title: 'Categories',
+    body: `<p class="modal-text">Rename, recolor, and reorder categories. Removing one keeps its prompts and moves them to No category.</p>
+      <div class="cat-manage" id="catManage"></div>
+      <div class="cat-add-row"><input type="text" id="newCatName" placeholder="New category name" maxlength="60" aria-label="New category name" autocomplete="off"><button class="btn" data-cm="add">${icon('plus')}Add</button></div>`,
+    actions: [{ label: 'Done', kind: 'primary', value: true }],
+    onMount(m) {
+      renderCatRows(m);
+      const addFrom = () => { const inp = $('#newCatName', m); const c = addCategory(inp.value); if (c) { inp.value = ''; renderCatRows(m); inp.focus(); } };
+      m.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'newCatName') { e.preventDefault(); addFrom(); } if (e.key === 'Enter' && e.target.dataset.cm === 'name') { e.preventDefault(); e.target.blur(); } });
+      m.addEventListener('input', e => {
+        if (e.target.dataset.cm !== 'color') return;
+        const c = state.categories.find(x => x.id === e.target.closest('.cat-row').dataset.cid);
+        if (c) { c.color = e.target.value; commit(); }
+      });
+      m.addEventListener('change', e => {
+        if (e.target.dataset.cm !== 'name') return;
+        const c = state.categories.find(x => x.id === e.target.closest('.cat-row').dataset.cid);
+        const v = e.target.value.trim().slice(0, 60);
+        if (c && v && v !== c.name) { c.name = v; commit(); } else if (c) e.target.value = c.name;
+      });
+      m.addEventListener('click', e => {
+        const b = e.target.closest('[data-cm]');
+        if (!b || b.tagName === 'INPUT') return;
+        if (b.dataset.cm === 'add') { addFrom(); return; }
+        const row = b.closest('.cat-row');
+        const i = state.categories.findIndex(x => x.id === row.dataset.cid);
+        if (i < 0) return;
+        const c = state.categories[i];
+        if (b.dataset.cm === 'up' || b.dataset.cm === 'down') {
+          const j = b.dataset.cm === 'up' ? i - 1 : i + 1;
+          if (j < 0 || j >= state.categories.length) return;
+          [state.categories[i], state.categories[j]] = [state.categories[j], state.categories[i]];
+          commit(); renderCatRows(m);
+          const nb = $(`.cat-row[data-cid="${cssId(c.id)}"] [data-cm="${b.dataset.cm}"]`, m);
+          (nb && !nb.disabled ? nb : $(`.cat-row[data-cid="${cssId(c.id)}"] input[type="text"]`, m)).focus();
+        } else if (b.dataset.cm === 'del') {
+          snapshot(`removing “${c.name}”`);
+          state.prompts.forEach(p => { if (p.categoryId === c.id) p.categoryId = null; });
+          state.categories.splice(i, 1);
+          commit(); renderCatRows(m);
+          const next = $$('.cat-row input[type="text"]', m)[Math.min(i, state.categories.length - 1)];
+          (next || $('#newCatName', m)).focus();
+          toast(`Removed “${c.name}”. Its prompts are in No category now.`, { action: 'Undo', onAction: undo, timeout: 7000 });
+        }
+      });
+    }
+  });
+}
+function renderCatRows(m) {
+  const box = $('#catManage', m);
+  if (!box) return;
+  const counts = new Map();
+  state.prompts.forEach(p => { if (p.categoryId) counts.set(p.categoryId, (counts.get(p.categoryId) || 0) + 1); });
+  const last = state.categories.length - 1;
+  box.innerHTML = state.categories.length ? state.categories.map((c, i) => `<div class="cat-row" data-cid="${esc(c.id)}">
+      <input type="color" value="${c.color}" data-cm="color" aria-label="Color for ${esc(c.name)}">
+      <input type="text" value="${esc(c.name)}" data-cm="name" maxlength="60" aria-label="Name for ${esc(c.name)}">
+      <span class="count" title="Prompts in this category">${counts.get(c.id) || 0}</span>
+      <button class="icon-btn sm" data-cm="up" aria-label="Move ${esc(c.name)} up"${i ? '' : ' disabled'}>${icon('up')}</button>
+      <button class="icon-btn sm" data-cm="down" aria-label="Move ${esc(c.name)} down"${i < last ? '' : ' disabled'}>${icon('down')}</button>
+      <button class="icon-btn sm" data-cm="del" aria-label="Remove ${esc(c.name)}">${icon('trash')}</button>
+    </div>`).join('') : '<p class="muted" style="font-size:.9em">No categories yet. Add your first one below.</p>';
+}
+
+function openShortcuts() {
+  const k = (...keys) => keys.map(x => `<kbd>${esc(x)}</kbd>`).join('');
+  const rows = [
+    [k('/'), 'Search'], [k(MOD, 'K'), 'Search from anywhere'], [k('N'), 'New prompt'],
+    [k('←', '→', '↑', '↓'), 'Move between prompts'], [k('Enter'), 'Open the focused prompt'],
+    [k('C'), 'Copy it, or fill in its fields'], [k('E'), 'Edit it'], [k('P'), 'Pin or unpin it'], [k('D'), 'Duplicate it'], [k('Delete'), 'Delete it'],
+    [k(MOD, 'Enter'), 'Copy in Use, save in Edit'], [k(MOD, 'S'), 'Save while editing'],
+    [k(MOD, 'Z'), 'Undo a delete, move, or import'], [k('Esc'), 'Close the panel or leave selection'], [k('?'), 'Show this list']
+  ];
+  openModal({ title: 'Keyboard shortcuts', body: `<table class="keys"><tbody>${rows.map(([a, b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join('')}</tbody></table>`, actions: [{ label: 'Done', kind: 'primary', value: true }] });
+}
+
+/* ================= Import and export ================= */
+function sortedForExport(ps) {
+  const ci = new Map(state.categories.map((c, i) => [c.id, i]));
+  return [...ps].sort((a, b) => ((ci.has(a.categoryId) ? ci.get(a.categoryId) : 1e6) - (ci.has(b.categoryId) ? ci.get(b.categoryId) : 1e6)) || a.order - b.order);
+}
+function exportJSON(prompts) {
+  const ids = new Set(prompts.map(p => p.categoryId));
+  const cats = prompts === state.prompts ? state.categories : state.categories.filter(c => ids.has(c.id));
+  return JSON.stringify({ app: 'prompt-library', version: 1, exportedAt: new Date().toISOString(), categories: cats, prompts, settings: state.settings }, null, 2);
+}
+function longestRun(s, ch) { let m = 0, c = 0; for (const x of s) { if (x === ch) { c++; if (c > m) m = c; } else c = 0; } return m; }
+function toMarkdown(prompts) {
+  const cmap = catMap();
+  let out = `# Prompt library\n\nExported ${new Date().toLocaleString()}, ${plural(prompts.length, 'prompt')}.\n`;
+  let cur;
+  for (const p of prompts) {
+    const k = cmap.has(p.categoryId) ? p.categoryId : '';
+    if (k !== cur) { cur = k; out += `\n## ${k ? cmap.get(k).name : 'No category'}\n`; }
+    const fence = '`'.repeat(Math.max(3, longestRun(p.body, '`') + 1));
+    out += `\n### ${p.title}\n\n`;
+    if (p.tags.length) out += p.tags.map(t => '#' + t).join(' ') + '\n\n';
+    out += `${fence}\n${p.body}\n${fence}\n`;
+    if (p.notes.trim()) out += `\n> ${p.notes.trim().replace(/\n/g, '\n> ')}\n`;
+  }
+  return out;
+}
+function toCSV(prompts) {
+  const cmap = catMap();
+  const cell = v => { v = String(v == null ? '' : v); return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+  const rows = [['title', 'prompt', 'category', 'tags', 'notes', 'uses', 'rating', 'pinned']];
+  prompts.forEach(p => rows.push([p.title, p.body, (cmap.get(p.categoryId) || {}).name || '', p.tags.join(', '), p.notes, p.uses, p.rating, p.pinned ? 'yes' : '']));
+  return rows.map(r => r.map(cell).join(',')).join('\r\n');
+}
+async function saveFile(filename, text) {
+  const mime = filename.endsWith('.json') ? 'application/json' : filename.endsWith('.csv') ? 'text/csv' : 'text/markdown';
+  const framed = (() => { try { return window.self !== window.top; } catch (e) { return true; } })();
+  if (window.claude && typeof window.claude.use === 'function') {
+    let dl = null;
+    try { dl = await window.claude.use('downloads'); } catch (e) { dl = null; }
+    if (dl) {
+      try { await dl.save({ filename, data: text }); toast(`Saved ${filename}.`); }
+      catch (e) {
+        if (e && (e.code === 'declined' || e.code === 'rate_limited')) return;
+        const ok = await copyText(text);
+        toast(ok ? 'That file couldn’t be saved here, so its contents are on your clipboard instead.' : 'That file couldn’t be saved here.', { kind: ok ? undefined : 'warn', timeout: 6000 });
+      }
+      return;
+    }
+    if (framed) {
+      const ok = await copyText(text);
+      toast(ok ? 'Downloads aren’t available here, so the file’s contents are on your clipboard.' : 'Downloads aren’t available here.', { kind: ok ? undefined : 'warn', timeout: 6000 });
+      return;
+    }
+  }
+  const url = URL.createObjectURL(new Blob([text], { type: mime + ';charset=utf-8' }));
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+  toast(`Saved ${filename}.`);
+}
+
+function parseCSV(t) {
+  const rows = []; let row = [], f = '', q = false;
+  for (let i = 0; i < t.length; i++) {
+    const c = t[i];
+    if (q) {
+      if (c === '"') { if (t[i + 1] === '"') { f += '"'; i++; } else q = false; }
+      else f += c;
+    } else if (c === '"') q = true;
+    else if (c === ',') { row.push(f); f = ''; }
+    else if (c === '\n' || c === '\r') { if (c === '\r' && t[i + 1] === '\n') i++; row.push(f); rows.push(row); row = []; f = ''; }
+    else f += c;
+  }
+  if (f !== '' || row.length) { row.push(f); rows.push(row); }
+  return rows;
+}
+function fromLoose(o) {
+  const pick = (...ks) => { for (const k of ks) if (o[k] != null && String(o[k]).trim() !== '') return o[k]; return ''; };
+  const body = String(pick('body', 'prompt', 'content', 'text', 'template'));
+  const title = String(pick('title', 'name', 'act', 'label')) || trunc(body.trim().split('\n')[0] || 'Untitled', 60);
+  const catName = o.categoryId != null ? '' : String(pick('category', 'folder', 'group'));
+  return { ...o, title, body, categoryName: catName, categoryId: o.categoryId != null ? String(o.categoryId) : null, tags: o.tags != null ? o.tags : pick('tag', 'keywords') };
+}
+function parseImport(text) {
+  text = text.replace(/^\uFEFF/, '').trim();
+  if (text[0] !== '{' && text[0] !== '[') {
+    const rows = parseCSV(text).filter(r => r.some(c => c.trim() !== ''));
+    if (rows.length < 2) throw new Error('csv');
+    const head = rows[0].map(h => h.trim().toLowerCase());
+    const prompts = rows.slice(1).map(r => { const o = {}; head.forEach((h, i) => { o[h] = r[i] == null ? '' : r[i]; }); return o; })
+      .map(fromLoose).filter(p => p.body.trim());
+    if (!prompts.length) throw new Error('csv');
+    prompts.forEach(p => {
+      if (typeof p.uses === 'string') p.uses = parseInt(p.uses, 10) || 0;
+      if (typeof p.rating === 'string') p.rating = parseInt(p.rating, 10) || 0;
+      if (typeof p.pinned === 'string') p.pinned = /^(yes|true|1|y)$/i.test(p.pinned.trim());
+      delete p.id;
+    });
+    return { categories: [], prompts };
+  }
+  const data = JSON.parse(text);
+  if (Array.isArray(data)) return { categories: [], prompts: data.filter(o => o && typeof o === 'object').map(fromLoose) };
+  if (data && Array.isArray(data.prompts)) return { categories: Array.isArray(data.categories) ? data.categories : [], prompts: data.prompts.filter(o => o && typeof o === 'object').map(fromLoose) };
+  throw new Error('format');
+}
+function mergeData(data, mode) {
+  if (mode === 'replace') { state.prompts = []; state.categories = []; }
+  const byId = new Map(state.categories.map(c => [c.id, c]));
+  const byName = new Map(state.categories.map(c => [c.name.toLowerCase(), c]));
+  const idMap = new Map();
+  const ensureCat = (name, id, color) => {
+    name = String(name || '').trim().slice(0, 60);
+    if (!name) return null;
+    let ex = byName.get(name.toLowerCase());
+    if (!ex) {
+      ex = { id: id && !byId.has(id) ? id : uid(), name, color: validColor(color) ? color : nextColor() };
+      state.categories.push(ex); byId.set(ex.id, ex); byName.set(name.toLowerCase(), ex);
+    }
+    return ex;
+  };
+  for (const c of data.categories) { if (!c || typeof c !== 'object') continue; const ex = ensureCat(c.name, c.id ? String(c.id) : null, c.color); if (ex && c.id) idMap.set(String(c.id), ex.id); }
+  const ids = new Set(state.prompts.map(p => p.id));
+  const sigs = new Set(state.prompts.map(p => p.title + '\u0000' + p.body));
+  let order = state.prompts.reduce((m, p) => Math.max(m, p.order), -1) + 1;
+  let added = 0, skipped = 0;
+  for (const raw of data.prompts) {
+    const p = normPrompt(raw, order);
+    if (!p.body.trim() && p.title === 'Untitled') { skipped++; continue; }
+    p.order = order++;
+    if (raw.categoryId && idMap.has(raw.categoryId)) p.categoryId = idMap.get(raw.categoryId);
+    else if (raw.categoryId && byId.has(raw.categoryId)) p.categoryId = raw.categoryId;
+    else if (raw.categoryName) { const c = ensureCat(raw.categoryName); p.categoryId = c ? c.id : null; }
+    else p.categoryId = null;
+    const sig = p.title + '\u0000' + p.body;
+    if (sigs.has(sig)) { skipped++; continue; }
+    if (ids.has(p.id)) p.id = uid();
+    ids.add(p.id); sigs.add(sig);
+    state.prompts.push(p);
+    added++;
+  }
+  return { added, skipped };
+}
+function doImport(data, mode, label) {
+  snapshot(label || (mode === 'replace' ? 'replacing the library' : 'the import'));
+  const { added, skipped } = mergeData(data, mode);
+  commit();
+  refreshOpenViews();
+  const msg = added ? `Added ${plural(added, 'prompt')}${skipped ? `, skipped ${plural(skipped, 'duplicate')}` : ''}.` : `Nothing new to add${skipped ? `: all ${plural(skipped, 'prompt')} were already here` : ''}.`;
+  toast(msg, added ? { action: 'Undo', onAction: undo, timeout: 7000 } : undefined);
+}
+function packCount(id) { return state.prompts.filter(p => p.pack === id).length; }
+function addPack(id) {
+  const pk = PACKS[id];
+  if (!pk) return;
+  const data = pk.build();
+  data.prompts = data.prompts.map(p => ({ ...p, uses: 0, lastUsed: null, recent: [] }));
+  [id, ...RELEASES.filter(r => r.pack === id).map(r => r.id)].forEach(x => { if (!state.packs.includes(x)) state.packs.push(x); });
+  doImport(data, 'merge', `adding ${pk.label}`);
+}
+function removePack(id) {
+  const pk = PACKS[id];
+  if (!pk) return;
+  const n = state.prompts.filter(p => p.pack === id && p.sample).length;
+  if (!n) { toast(`Every ${pk.label} prompt left in your library has been edited, so they were kept.`); return; }
+  snapshot(`removing ${pk.label}`);
+  state.prompts = state.prompts.filter(p => !(p.pack === id && p.sample));
+  const used = new Set(state.prompts.map(p => p.categoryId));
+  const packCats = new Set(pk.build().categories.map(c => c.id));
+  state.categories = state.categories.filter(c => !packCats.has(c.id) || used.has(c.id));
+  commit();
+  refreshOpenViews();
+  toast(`Removed ${plural(n, 'prompt')} from ${pk.label}. Prompts you edited were kept.`, { action: 'Undo', onAction: undo, timeout: 7000 });
+}
+let packsChecked = false;
+function ensurePacks() {
+  if (packsChecked) return;
+  packsChecked = true;
+  const missing = RELEASES.filter(r => !state.packs.includes(r.id) && PACKS[r.pack]);
+  if (!missing.length) return;
+  if (state.seeded) {
+    // An untouched first-run library: fold new prompts in as part of the samples.
+    missing.forEach(r => { mergeData(releaseData(r), 'merge'); state.packs.push(r.id); });
+    writeLocal();
+    render();
+    return;
+  }
+  const labels = [...new Set(missing.map(r => PACKS[r.pack].label))];
+  snapshot(`adding new ${labels.join(' and ')} prompts`);
+  let added = 0;
+  const names = new Set();
+  missing.forEach(r => {
+    const d = releaseData(r);
+    const before = new Set(state.prompts.map(p => p.id));
+    added += mergeData(d, 'merge').added;
+    const cmap = catMap();
+    state.prompts.forEach(p => { if (!before.has(p.id) && cmap.has(p.categoryId)) names.add(cmap.get(p.categoryId).name); });
+    state.packs.push(r.id);
+  });
+  commit();
+  refreshOpenViews();
+  if (added) {
+    const list = a => a.length < 3 ? a.join(' and ') : a.slice(0, -1).join(', ') + ', and ' + a[a.length - 1];
+    toast(`Added ${plural(added, 'new prompt')} from ${list(labels)}, filed under ${list([...names])}.`, { action: 'Undo', onAction: undo, timeout: 9000 });
+  }
+}
+async function handleImportFile(f) {
+  if (!f) return;
+  let text;
+  try { text = await f.text(); } catch (e) { toast('That file couldn’t be read.', { kind: 'warn' }); return; }
+  let data;
+  try { data = parseImport(text); }
+  catch (e) { toast('That file isn’t a prompt library backup, a JSON list of prompts, or a CSV with a prompt column.', { kind: 'warn', timeout: 7000 }); return; }
+  if (!data.prompts.length) { toast('No prompts were found in that file.', { kind: 'warn' }); return; }
+  let mode = 'merge';
+  if (state.prompts.length) {
+    mode = await openModal({
+      title: `Import ${plural(data.prompts.length, 'prompt')}`,
+      body: `<p class="modal-text">Add them to your library, or replace everything you have now? Matching prompts are skipped when adding. Either way, you can undo it right after.</p>`,
+      actions: [{ label: 'Cancel', kind: 'ghost', value: null }, { label: 'Replace my library', kind: 'danger', value: 'replace' }, { label: 'Add to my library', kind: 'primary', value: 'merge' }]
+    });
+    if (!mode) return;
+  }
+  if (data.settings && mode === 'replace') state.settings = mergeSettings(data.settings);
+  doImport(data, mode);
+}
+
+/* ================= Account sync (inside claude.ai only) ================= */
+function chunkify(json) {
+  const out = [], enc = new TextEncoder();
+  let i = 0;
+  while (i < json.length) {
+    let size = 60000, piece;
+    for (;;) {
+      let end = Math.min(i + size, json.length);
+      const cc = json.charCodeAt(end - 1);
+      if (end < json.length && cc >= 0xD800 && cc <= 0xDBFF) end--;
+      piece = json.slice(i, end);
+      if (enc.encode(JSON.stringify({ s: piece })).length < 240000 || size < 2000) break;
+      size = Math.floor(size / 2);
+    }
+    out.push(piece);
+    i += piece.length;
+  }
+  return out.length ? out : [''];
+}
+function hashStr(s) {
+  let h1 = 0x811c9dc5 | 0, h2 = 0x9747b28c | 0;
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    h1 = Math.imul(h1 ^ c, 0x01000193);
+    h2 = Math.imul(h2 ^ c, 0x5bd1e995); h2 ^= h2 >>> 15;
+  }
+  return 'k' + (h1 >>> 0).toString(36) + (h2 >>> 0).toString(36) + s.length.toString(36);
+}
+const Sync = {
+  state: 'local', detail: '', ref: null, remoteIds: [], timer: null, busy: false, again: false, retries: 0, pullRetried: false,
+  settle() { ensurePacks(); },
+  set(s, detail) {
+    this.state = s; this.detail = detail || '';
+    const el = $('.sync', sidebar);
+    if (el) { el.dataset.state = s; const t = $('.sync-text', el); if (t) t.textContent = syncLabel(); }
+    const n = $('#syncNote'); if (n) n.textContent = syncLabel();
+  },
+  async init() {
+    if (!(window.claude && typeof window.claude.use === 'function')) { this.settle(); return; }
+    this.set('connecting');
+    let db = null, user = null;
+    try { [db, user] = await Promise.all([window.claude.use('db'), window.claude.use('user')]); } catch (e) { /* stay local */ }
+    if (!db || !user) { this.set('local'); this.settle(); return; }
+    let id = null;
+    try { id = await user.id(); } catch (e) { id = null; }
+    if (!id) { this.set('local'); this.settle(); return; }
+    try { this.ref = db.doc('data/users/' + id + '/library'); } catch (e) { this.set('local'); this.settle(); return; }
+    let answered = false;
+    const timer = setTimeout(() => { if (!answered) this.set('offline'); }, 10000);
+    this.ref.onSnapshot(snap => {
+      if (!snap.metadata.fromCache) { answered = true; clearTimeout(timer); }
+      if (snap.metadata.hasPendingWrites) return;
+      this.onRemote(snap, !snap.metadata.fromCache);
+    }, err => { answered = true; clearTimeout(timer); this.ref = null; this.set('error', err && err.code); this.settle(); });
+  },
+  async onRemote(snap, confirmed) {
+    if (!snap.exists) {
+      this.remoteIds = [];
+      if (!state.seeded && state.updatedAt > 0) this.schedule(400);
+      else if (confirmed && !this.busy && !this.timer) this.set('synced');
+      if (confirmed) this.settle();
+      return;
+    }
+    const m = snap.data() || {};
+    const ids = Array.isArray(m.ids) ? m.ids.map(String) : [];
+    const ts = +m.updatedAt || 0;
+    if (ts > state.updatedAt) { const ok = await this.pull(ids, ts); if (ok && confirmed) this.settle(); }
+    else if (ts < state.updatedAt) { this.remoteIds = ids; this.schedule(400); if (confirmed) this.settle(); }
+    else { this.remoteIds = ids; if (!this.busy && !this.timer && (confirmed || this.state === 'connecting')) this.set('synced'); if (confirmed) this.settle(); }
+  },
+  async pull(ids, ts) {
+    if (!this.ref) return;
+    try {
+      const col = this.ref.collection('chunks');
+      const snaps = await Promise.all(ids.map(i => col.doc(i).get()));
+      if (snaps.some(s => !s.exists)) return false; // another device is mid-save; its next update completes this
+      const remote = normalize(JSON.parse(snaps.map(s => String((s.data() || {}).s || '')).join('')));
+      if (state.updatedAt > ts) { this.schedule(400); return true; }
+      if (state.updatedAt === ts) { this.remoteIds = ids; return true; }
+      const hadWork = state.updatedAt > 0;
+      remote.updatedAt = ts; remote.seeded = false;
+      state = remote;
+      this.remoteIds = ids;
+      writeLocal(); render(); refreshOpenViews();
+      this.set('synced');
+      if (hadWork) toast('Your library was updated from another device.');
+      return true;
+    } catch (e) {
+      if (e && e.code === 'unavailable' && !this.pullRetried) {
+        this.pullRetried = true;
+        setTimeout(() => { this.pull(ids, ts).then(ok => { if (ok) this.settle(); }); }, 1500 + Math.random() * 1500);
+        return false;
+      }
+      // Stop syncing rather than risk overwriting a newer account copy we couldn't read.
+      this.ref = null;
+      this.set('error', e && e.code);
+      this.settle();
+      return false;
+    }
+  },
+  schedule(delay) {
+    if (!this.ref) return;
+    clearTimeout(this.timer);
+    if (this.state !== 'saving') this.set('pending');
+    this.timer = setTimeout(() => { this.timer = null; this.push(); }, delay == null ? 1200 : delay);
+  },
+  async push() {
+    if (!this.ref) return;
+    if (this.busy) { this.again = true; return; }
+    this.busy = true; this.set('saving');
+    let retry = false;
+    try {
+      const ts = state.updatedAt;
+      const pieces = chunkify(JSON.stringify(state));
+      const ids = pieces.map(hashStr);
+      const col = this.ref.collection('chunks');
+      const have = new Set(this.remoteIds);
+      for (let i = 0; i < pieces.length; i++) {
+        if (have.has(ids[i])) continue;
+        await col.doc(ids[i]).set({ s: pieces[i] });
+        have.add(ids[i]);
+      }
+      await this.ref.set({ v: 1, updatedAt: ts, ids, savedAt: Date.now() });
+      const stale = this.remoteIds.filter(x => !ids.includes(x));
+      this.remoteIds = ids; this.retries = 0;
+      for (const x of stale) { try { await col.doc(x).delete(); } catch (e) { /* harmless leftover */ } }
+      if (!this.again && !this.timer) this.set('synced');
+    } catch (e) {
+      const code = e && e.code;
+      if (code === 'unavailable' && this.retries < 2) { this.retries++; retry = true; }
+      else this.set('error', code);
+    } finally {
+      this.busy = false;
+      if (retry) this.schedule(1500 + Math.random() * 2000);
+      else if (this.again) { this.again = false; this.schedule(300); }
+    }
+  }
+};
+
+/* ================= Toasts ================= */
+function toast(msg, o) {
+  o = o || {};
+  const el = document.createElement('div');
+  el.className = 'toast' + (o.kind ? ' toast-' + o.kind : '');
+  el.setAttribute('role', o.kind === 'warn' ? 'alert' : 'status');
+  el.innerHTML = `<span class="toast-msg">${esc(msg)}</span>${o.action ? `<button class="toast-btn">${esc(o.action)}</button>` : ''}`;
+  let tm;
+  const remove = () => { clearTimeout(tm); el.classList.add('out'); setTimeout(() => el.remove(), 180); };
+  if (o.action) $('.toast-btn', el).addEventListener('click', () => { remove(); if (o.onAction) o.onAction(); });
+  toasts.appendChild(el);
+  while (toasts.children.length > 3) toasts.firstElementChild.remove();
+  tm = setTimeout(remove, o.timeout || 3200);
+  el.addEventListener('mouseenter', () => clearTimeout(tm));
+  el.addEventListener('mouseleave', () => { tm = setTimeout(remove, 1600); });
+}
+
+/* ================= Focus trap ================= */
+function trapTab(e, root) {
+  const f = $$('button:not([disabled]),input:not([disabled]):not([type=hidden]),select:not([disabled]),textarea:not([disabled]),summary,[tabindex]:not([tabindex="-1"])', root)
+    .filter(el => el.getClientRects().length > 0);
+  if (!f.length) return;
+  const first = f[0], last = f[f.length - 1];
+  if (!root.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
+  else if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+}
+
+/* ================= Events ================= */
+function bind() {
+  // Toolbar
+  const onSearch = debounce(() => { renderList(); }, 70);
+  qInput.addEventListener('input', () => { ui.q = qInput.value; onSearch(); });
+  sortSel.addEventListener('change', () => { state.settings.sort = sortSel.value; state.settings.sortDir = (SORTS[sortSel.value] || SORTS.uses).dir; commit(); });
+  dirBtn.addEventListener('click', () => { state.settings.sortDir = state.settings.sortDir === 'asc' ? 'desc' : 'asc'; commit(); dirBtn.focus(); });
+  viewSeg.addEventListener('click', e => { const b = e.target.closest('[data-view]'); if (b) { state.settings.view = b.dataset.view; commit(); } });
+  selectBtn.addEventListener('click', () => setSelectMode(!ui.selectMode));
+  newBtn.addEventListener('click', () => openDrawer(null, 'edit'));
+  menuBtn.addEventListener('click', () => setSidebar(!ui.sidebarOpen));
+  scrim.addEventListener('click', () => { if (ui.drawer) requestCloseDrawer(); else if (ui.sidebarOpen) setSidebar(false); });
+  narrowMQ.addEventListener('change', () => { if (!narrowMQ.matches && ui.sidebarOpen) setSidebar(false); });
+  darkMQ.addEventListener('change', applyAppearance);
+
+  // Sidebar
+  sidebar.addEventListener('click', e => {
+    const sc = e.target.closest('[data-scope]');
+    if (sc) { setScope(sc.dataset.scope); return; }
+    const tg = e.target.closest('[data-tag]');
+    if (tg) { toggleTag(tg.dataset.tag); return; }
+    const a = e.target.closest('[data-sact]');
+    if (!a) return;
+    const act = a.dataset.sact;
+    if (act === 'add-cat') { ui.addingCat = true; renderSidebar(); }
+    else if (act === 'manage-cats') openCategories();
+    else if (act === 'settings') openSettings();
+    else if (act === 'shortcuts') openShortcuts();
+    else if (act === 'close-side') { setSidebar(false); menuBtn.focus(); }
+    else if (act === 'more-tags') { ui.showAllTags = !ui.showAllTags; renderSidebar(); }
+  });
+  const finishAddCat = save => {
+    const inp = $('#addCatInput');
+    if (!ui.addingCat) return;
+    const v = inp ? inp.value.trim() : '';
+    ui.addingCat = false;
+    if (save && v) { const c = addCategory(v); if (c) toast(`Added “${c.name}”. Drag prompts onto it to file them.`); else renderSidebar(); }
+    else renderSidebar();
+    const btn = $('[data-sact="add-cat"]', sidebar); if (btn && document.activeElement === document.body) btn.focus();
+  };
+  sidebar.addEventListener('keydown', e => {
+    if (e.target.id !== 'addCatInput') return;
+    if (e.key === 'Enter') { e.preventDefault(); finishAddCat(true); }
+    else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); finishAddCat(false); }
+  });
+  sidebar.addEventListener('focusout', e => { if (e.target.id === 'addCatInput') setTimeout(() => finishAddCat(true), 0); });
+
+  // Filter bar
+  filterbar.addEventListener('click', e => {
+    const b = e.target.closest('[data-fact]');
+    if (!b) return;
+    if (b.dataset.fact === 'clear') { clearFilters(); qInput.focus(); return; }
+    const kind = b.dataset.kind;
+    if (kind === 'scope') ui.scope = 'all';
+    else if (kind === 'tag') ui.tags.delete(b.dataset.val);
+    else if (kind === 'q') { ui.q = ''; qInput.value = ''; }
+    renderSidebar(); renderList(); renderBulk();
+    const next = $('.chip-x', filterbar); (next || qInput).focus();
+  });
+
+  // Bulk bar
+  bulkbar.addEventListener('click', async e => {
+    const b = e.target.closest('button[data-bact]');
+    if (!b) return;
+    const act = b.dataset.bact, ids = [...ui.selected];
+    if (act === 'all') { ui.visibleIds.forEach(id => ui.selected.add(id)); renderList(); renderBulk(); }
+    else if (act === 'none') { ui.selected.clear(); renderList(); renderBulk(); }
+    else if (act === 'done') setSelectMode(false);
+    else if (act === 'pin') {
+      const ps = ids.map(getPrompt).filter(Boolean), to = !ps.every(p => p.pinned);
+      ps.forEach(p => { p.pinned = to; }); commit();
+      toast(`${to ? 'Pinned' : 'Unpinned'} ${plural(ps.length, 'prompt')}.`);
+    } else if (act === 'tag') {
+      const name = await promptModal({ title: `Add a tag to ${plural(ids.length, 'prompt')}`, label: 'Tag', placeholder: 'e.g. client-work', confirm: 'Add tag', max: 40 });
+      const tags = normTags(name || '');
+      if (!tags.length) return;
+      snapshot(`tagging ${plural(ids.length, 'prompt')}`);
+      ids.map(getPrompt).filter(Boolean).forEach(p => { p.tags = normTags([...p.tags, ...tags]); });
+      commit();
+      toast(`Tagged ${plural(ids.length, 'prompt')} with #${tags.join(', #')}.`, { action: 'Undo', onAction: undo });
+    } else if (act === 'export') {
+      const ps = sortedForExport(ids.map(getPrompt).filter(Boolean));
+      saveFile(`prompts-${stamp()}.json`, exportJSON(ps));
+    } else if (act === 'delete') {
+      await deletePrompts(ids);
+    }
+  });
+  bulkbar.addEventListener('change', e => {
+    if (e.target.dataset.bact !== 'move' || !e.target.value) return;
+    moveTo([...ui.selected], e.target.value === '__none' ? null : e.target.value);
+  });
+
+  // Cards
+  cardsEl.addEventListener('click', e => {
+    const ea = e.target.closest('[data-eact]');
+    if (ea) {
+      const a = ea.dataset.eact;
+      if (a === 'new') openDrawer(null, 'edit');
+      else if (a === 'new-from-q') { const q = ui.q.trim(); clearFilters(); openDrawer(null, 'edit', q); }
+      else if (a === 'import') fileInput.click();
+      else if (a.startsWith('pack:')) addPack(a.slice(5));
+      else if (a === 'clear') clearFilters();
+      return;
+    }
+    const card = e.target.closest('.card');
+    if (!card) return;
+    const p = getPrompt(card.dataset.id);
+    if (!p) return;
+    const actEl = e.target.closest('[data-act]');
+    if (actEl && card.contains(actEl)) {
+      const act = actEl.dataset.act;
+      if (act === 'pin') togglePin(p);
+      else if (act === 'edit') openDrawer(p.id, 'edit');
+      else if (act === 'quick') quickUse(p);
+      else if (act === 'tag') toggleTag(actEl.dataset.tag);
+      return;
+    }
+    if (window.getSelection && String(window.getSelection()).length > 2) return; // let people select preview text
+    if (ui.selectMode) toggleSelect(p.id, e.shiftKey);
+    else openDrawer(p.id, state.settings.openMode);
+  });
+  cardsEl.addEventListener('keydown', e => {
+    const card = e.target.closest('.card');
+    if (!card || e.target !== card || e.ctrlKey || e.metaKey || e.altKey) return;
+    const p = getPrompt(card.dataset.id);
+    if (!p) return;
+    const k = e.key;
+    let handled = true;
+    if (k === 'Enter' || k === ' ') { ui.selectMode ? toggleSelect(p.id, e.shiftKey) : openDrawer(p.id, state.settings.openMode); }
+    else if (k === 'e' || k === 'E') openDrawer(p.id, 'edit');
+    else if (k === 'c' || k === 'C') quickUse(p);
+    else if (k === 'p' || k === 'P') togglePin(p);
+    else if (k === 'd' || k === 'D') duplicate(p);
+    else if (k === 'Delete' || k === 'Backspace') deletePrompts([p.id]);
+    else if (k.startsWith('Arrow')) {
+      const cards = $$('.card', cardsEl), i = cards.indexOf(card);
+      let step = 1;
+      if ((k === 'ArrowUp' || k === 'ArrowDown') && state.settings.view === 'cards') step = getComputedStyle(cardsEl).gridTemplateColumns.split(' ').filter(Boolean).length || 1;
+      const t = cards[clamp(i + ((k === 'ArrowRight' || k === 'ArrowDown') ? step : -step), 0, cards.length - 1)];
+      if (t) t.focus();
+    } else handled = false;
+    if (handled) e.preventDefault();
+  });
+
+  // Drag and drop: reorder in "Your order", move onto a sidebar category, or drop text into other apps
+  let dragId = null;
+  const clearDrop = () => $$('.drop-target').forEach(x => x.classList.remove('drop-target'));
+  cardsEl.addEventListener('dragstart', e => {
+    const card = e.target.closest && e.target.closest('.card');
+    if (!card) return;
+    const p = getPrompt(card.dataset.id);
+    dragId = card.dataset.id;
+    e.dataTransfer.effectAllowed = 'copyMove';
+    e.dataTransfer.setData('text/x-prompt-id', dragId);
+    if (p) e.dataTransfer.setData('text/plain', p.body);
+    card.classList.add('dragging');
+  });
+  cardsEl.addEventListener('dragend', () => { $$('.dragging').forEach(x => x.classList.remove('dragging')); clearDrop(); dragId = null; });
+  cardsEl.addEventListener('dragover', e => {
+    if (!dragId || state.settings.sort !== 'custom') return;
+    const card = e.target.closest('.card');
+    if (!card || card.dataset.id === dragId) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (!card.classList.contains('drop-target')) { clearDrop(); card.classList.add('drop-target'); }
+  });
+  cardsEl.addEventListener('drop', e => {
+    if (!dragId || state.settings.sort !== 'custom') return;
+    const card = e.target.closest('.card');
+    if (!card || card.dataset.id === dragId) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const id = dragId;
+    clearDrop();
+    reorder(id, card.dataset.id);
+    const moved = $(`.card[data-id="${cssId(id)}"]`, cardsEl); if (moved) moved.focus({ preventScroll: true });
+  });
+  sidebar.addEventListener('dragover', e => {
+    if (!dragId) return;
+    const t = e.target.closest('[data-drop-cat]');
+    if (!t) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (!t.classList.contains('drop-target')) { clearDrop(); t.classList.add('drop-target'); }
+  });
+  sidebar.addEventListener('dragleave', e => { const t = e.target.closest && e.target.closest('[data-drop-cat]'); if (t && !t.contains(e.relatedTarget)) t.classList.remove('drop-target'); });
+  sidebar.addEventListener('drop', e => {
+    if (!dragId) return;
+    const t = e.target.closest('[data-drop-cat]');
+    if (!t) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const ids = ui.selectMode && ui.selected.has(dragId) ? [...ui.selected] : [dragId];
+    clearDrop();
+    moveTo(ids, t.dataset.dropCat || null);
+  });
+  // Drop a backup or CSV anywhere to import it
+  window.addEventListener('dragover', e => { if (!dragId && e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files')) e.preventDefault(); });
+  window.addEventListener('drop', e => {
+    if (dragId || !e.dataTransfer || !e.dataTransfer.files || !e.dataTransfer.files.length) return;
+    e.preventDefault();
+    if (!modalWrap.hidden || ui.drawer) return;
+    handleImportFile(e.dataTransfer.files[0]);
+  });
+  fileInput.addEventListener('change', () => { const f = fileInput.files && fileInput.files[0]; fileInput.value = ''; handleImportFile(f); });
+
+  // Drawer
+  drawer.addEventListener('click', e => {
+    const d = ui.drawer;
+    if (!d) return;
+    const star = e.target.closest('[data-rate]');
+    if (star) {
+      const ctx = star.closest('.stars').dataset.ctx, n = +star.dataset.rate;
+      if (ctx === 'use') { const p = getPrompt(d.id); if (!p) return; p.rating = p.rating === n ? 0 : n; commit(); star.closest('.stars').outerHTML = starsHTML(p.rating, 'use'); }
+      else { d.draft.rating = d.draft.rating === n ? 0 : n; d.dirty = true; star.closest('.stars').outerHTML = starsHTML(d.draft.rating, 'edit'); }
+      const nb = $(`.stars [data-rate="${n}"]`, drawer); if (nb) nb.focus();
+      return;
+    }
+    if (e.target.id === 'tagBox') { $('#fTagInput', drawer).focus(); return; }
+    const b = e.target.closest('[data-dact]');
+    if (!b) return;
+    const p = d.id ? getPrompt(d.id) : null;
+    switch (b.dataset.dact) {
+      case 'close': requestCloseDrawer(); break;
+      case 'mode': switchMode(b.dataset.mode); break;
+      case 'pin': if (p) { p.pinned = !p.pinned; commit(); renderDrawer(); const pb = $('[data-dact="pin"]', drawer); if (pb) pb.focus(); } break;
+      case 'duplicate': if (p) duplicate(p); break;
+      case 'delete': if (p) deletePrompts([p.id]); break;
+      case 'copy': copyFromDrawer(); break;
+      case 'clear-vars': d.values = {}; renderDrawer(); focusDrawer(); break;
+      case 'save': saveDraft(); break;
+      case 'cancel': cancelEdit(); break;
+      case 'insert-var': insertVar(); break;
+      case 'rm-tag': d.draft.tags = d.draft.tags.filter(t => t !== b.dataset.tag); d.dirty = true; updateTagBox(); $('#fTagInput', drawer).focus(); break;
+      case 'restore': if (p) {
+        const h = p.history[+b.dataset.idx];
+        if (!h) break;
+        const ta = $('#fBody', drawer);
+        d.draft.body = h.body; d.dirty = true;
+        if (ta) { ta.value = h.body; ta.focus(); ta.setSelectionRange(0, 0); ta.scrollTop = 0; }
+        updateBodyMeta();
+        toast('That version is in the editor. Save changes to keep it.');
+      } break;
+    }
+  });
+  drawer.addEventListener('input', e => {
+    const d = ui.drawer, t = e.target;
+    if (!d) return;
+    if (t.dataset.var != null) {
+      d.values[t.dataset.var] = t.value;
+      autosize(t);
+      const pv = $('#dPreview', drawer), p = getPrompt(d.id);
+      if (pv && p) pv.innerHTML = filledHTML(p.body, d.values);
+      return;
+    }
+    if (t.id === 'fTitle') { d.draft.title = t.value; d.dirty = true; }
+    else if (t.id === 'fBody') { d.draft.body = t.value; d.dirty = true; updateBodyMeta(); }
+    else if (t.id === 'fNotes') { d.draft.notes = t.value; d.dirty = true; autosize(t); }
+  });
+  drawer.addEventListener('change', async e => {
+    const d = ui.drawer;
+    if (!d || e.target.id !== 'fCat') return;
+    const sel = e.target;
+    if (sel.value === '__new') {
+      const name = await promptModal({ title: 'New category', label: 'Name', placeholder: 'e.g. Marketing', confirm: 'Add category' });
+      if (!ui.drawer) return;
+      if (name) { const c = addCategory(name); if (c) { ui.drawer.draft.categoryId = c.id; ui.drawer.dirty = true; } }
+      const s2 = $('#fCat', drawer);
+      if (s2) { s2.innerHTML = catOptions(ui.drawer.draft.categoryId); s2.value = ui.drawer.draft.categoryId || ''; s2.focus(); }
+    } else { d.draft.categoryId = sel.value || null; d.dirty = true; }
+  });
+  drawer.addEventListener('keydown', e => {
+    const t = e.target;
+    if (t.id !== 'fTagInput') return;
+    if ((e.key === 'Enter' || e.key === ',') && t.value.trim()) { e.preventDefault(); addDraftTags(t.value); t.value = ''; }
+    else if (e.key === 'Enter') e.preventDefault();
+    else if (e.key === 'Backspace' && !t.value && ui.drawer.draft.tags.length) { ui.drawer.draft.tags.pop(); ui.drawer.dirty = true; updateTagBox(); }
+  });
+  drawer.addEventListener('focusout', e => { if (e.target.id === 'fTagInput' && e.target.value.trim() && ui.drawer) { addDraftTags(e.target.value); e.target.value = ''; } });
+
+  // Global keys
+  document.addEventListener('keydown', e => {
+    if (e.defaultPrevented) return;
+    const mod = e.metaKey || e.ctrlKey;
+    if (!modalWrap.hidden) {
+      if (e.key === 'Escape') { e.preventDefault(); closeModal(null); }
+      else if (e.key === 'Tab') trapTab(e, modalWrap);
+      return;
+    }
+    if (ui.drawer) {
+      if (e.key === 'Escape') { e.preventDefault(); requestCloseDrawer(); }
+      else if (e.key === 'Tab') trapTab(e, drawer);
+      else if (mod && e.key === 'Enter') { e.preventDefault(); ui.drawer.mode === 'use' ? copyFromDrawer() : saveDraft(); }
+      else if (mod && (e.key === 's' || e.key === 'S')) { e.preventDefault(); if (ui.drawer.mode === 'edit') saveDraft(); }
+      return;
+    }
+    if (mod && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); qInput.focus(); qInput.select(); return; }
+    const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable;
+    if (typing) {
+      if (e.key === 'Escape' && e.target === qInput) {
+        if (qInput.value) { qInput.value = ''; ui.q = ''; renderList(); } else qInput.blur();
+      }
+      return;
+    }
+    if (mod && (e.key === 'z' || e.key === 'Z') && !e.shiftKey) { e.preventDefault(); undo(); return; }
+    if (mod || e.altKey) return;
+    if (e.key === '/') { e.preventDefault(); qInput.focus(); qInput.select(); }
+    else if (e.key === 'n' || e.key === 'N') { e.preventDefault(); openDrawer(null, 'edit'); }
+    else if (e.key === '?') { e.preventDefault(); openShortcuts(); }
+    else if (e.key === 'Escape') { if (ui.sidebarOpen) { setSidebar(false); menuBtn.focus(); } else if (ui.selectMode) setSelectMode(false); }
+  });
+
+  // Another tab of this page saved a newer library
+  window.addEventListener('storage', e => {
+    if (e.key !== LS_KEY || !e.newValue) return;
+    try {
+      const s = normalize(JSON.parse(e.newValue));
+      if (s.updatedAt > state.updatedAt) { state = s; render(); refreshOpenViews(); }
+    } catch (err) { /* ignore a partial write */ }
+  });
+}
+
+/* ================= Start ================= */
+function init() {
+  $$('[data-icon]').forEach(el => {
+    const svg = icon(el.dataset.icon);
+    if (el.tagName === 'SPAN' && !el.children.length && !el.textContent.trim()) el.outerHTML = svg;
+    else el.insertAdjacentHTML('afterbegin', svg);
+  });
+  sortSel.innerHTML = Object.entries(SORTS).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('');
+  try { if (!localStorage.getItem(LS_KEY)) writeLocal(); } catch (e) { localOK = false; }
+  bind();
+  render();
+  Sync.init();
+}
+init();
+})();
+
+</script>
+</body>
+</html>
